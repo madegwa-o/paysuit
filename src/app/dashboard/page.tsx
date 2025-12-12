@@ -1,4 +1,4 @@
-import { OrgChart } from "@/components/org-chart"
+import { OrgChart } from "@/components/dashboard/org-chart"
 
 export default function Home() {
   return (

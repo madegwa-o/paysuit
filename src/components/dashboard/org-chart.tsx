@@ -6,10 +6,10 @@ import { employees } from "@/data/employees"
 import { buildHierarchy, layoutNodesWithDagre } from "@/utils/hierarchy"
 import { useChartNavigation } from "@/hooks/use-chart-navigation"
 import { EmployeeCard } from "@/components/employee-card"
-import { ConnectionLines } from "@/components/connection-lines"
-import { ChartControls } from "@/components/chart-controls"
-import { ZoomControls } from "@/components/zoom-controls"
-import { ChartLegend } from "@/components/chart-legend"
+import { ConnectionLines } from "@/components/dashboard/connection-lines"
+import { ChartControls } from "@/components/dashboard/chart-controls"
+import { ZoomControls } from "@/components/dashboard/zoom-controls"
+import { ChartLegend } from "@/components/dashboard/chart-legend"
 
 export function OrgChart() {
   const [hierarchy, setHierarchy] = useState<OrgNode | null>(null)
