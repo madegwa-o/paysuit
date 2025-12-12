@@ -113,7 +113,7 @@ export default function InstallPrompt() {
                             />
 
                             <div>
-                                <h3 className="font-semibold text-card-foreground">Install Malipo Tech</h3>
+                                <h3 className="font-semibold text-card-foreground">Install Paysuit</h3>
                                 <p className="text-sm text-muted-foreground">Access payments instantly — right from your home screen.</p>
                             </div>
                         </div>
