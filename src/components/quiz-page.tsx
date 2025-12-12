@@ -266,7 +266,7 @@ export default function FintechQuizGame() {
                                 <br />
                                 <span className="text-foreground"> To Be Here.</span>
                                 <br />
-                                <span className="bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+                                <span className="bg-gradient-to-r from-green-600 to-green-400 dark:from-green-600 dark:to-green-200 bg-clip-text text-transparent">
                                     Paysuit
                                   </span>
                                 <br />

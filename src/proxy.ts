@@ -1,4 +1,4 @@
-// middleware.ts
+// proxy.ts
 import { withAuth } from "next-auth/middleware"
 import { NextResponse } from "next/server"
 
@@ -31,7 +31,7 @@ const matchesPattern = (pathname: string, patterns: string[]): boolean => {
 };
 
 export default withAuth(
-    function middleware(req) {
+    function proxy(req) {
         const { pathname } = req.nextUrl;
 
         // Allow static assets through without any processing
