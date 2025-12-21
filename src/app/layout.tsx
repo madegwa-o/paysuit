@@ -47,19 +47,20 @@ export const metadata: Metadata = {
     metadataBase: new URL("https://malipo.aistartupclub.com"),
 
     title: {
-        default: "Malipo Tech — M-Pesa Payments for Developers",
-        template: "%s | Malipo Tech",
+        default: "Paysuit — M-Pesa Payments for Developers",
+        template: "%s | Paysuit fintech",
     },
 
     description:
         "Add M-Pesa payments to your apps in minutes. One API call, instant settlement, zero bureaucracy.",
 
-    applicationName: "Malipo Tech",
+    applicationName: "Paysuit",
     generator: "Next.js",
     manifest: "/manifest.json",
 
     keywords: [
-        "Malipo Tech",
+        "Paysuit",
+        "Paysuit fintech",
         "M-Pesa API",
         "Daraja API",
         "payments API",
@@ -79,8 +80,8 @@ export const metadata: Metadata = {
         },
     ],
 
-    creator: "Malipo Tech",
-    publisher: "Malipo Tech",
+    creator: "Paysuit ",
+    publisher: "Paysuit Tech",
 
     icons: {
         icon: [
@@ -100,23 +101,23 @@ export const metadata: Metadata = {
     openGraph: {
         type: "website",
         url: "https://malipo.aistartupclub.com",
-        title: "Malipo Tech — M-Pesa Payments for Developers",
+        title: "Paysuit — M-Pesa Payments for Developers",
         description:
             "The fastest way to integrate M-Pesa. Instant payments, simple SDKs, no bureaucracy.",
-        siteName: "Malipo Tech",
+        siteName: "Paysuit ",
         images: [
             {
                 url: "https://malipo.aistartupclub.com/og-image.png",
                 width: 1200,
                 height: 630,
-                alt: "Malipo Tech — M-Pesa Payments for Developers"
+                alt: "Paysuit — M-Pesa Payments for Developers"
             }
         ],
     },
 
     twitter: {
         card: "summary_large_image",
-        title: "Malipo Tech — M-Pesa Payments for Developers",
+        title: "Paysuit — M-Pesa Payments for Developers",
         description:
             "Integrate M-Pesa in minutes with clean APIs and SDKs.",
         images: ["https://malipo.aistartupclub.com/og-image.png"],
@@ -128,7 +129,7 @@ export const metadata: Metadata = {
 
     appleWebApp: {
         capable: true,
-        title: "Malipo Tech",
+        title: "Paysuit",
         statusBarStyle: "black-translucent"
     },
 
