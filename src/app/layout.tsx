@@ -44,15 +44,15 @@ export const viewport: Viewport = {
 // Metadata
 // -----------------
 export const metadata: Metadata = {
-    metadataBase: new URL("https://malipo.aistartupclub.com"),
+    metadataBase: new URL("https://paysuit.aistartupclub.com"),
 
     title: {
         default: "Paysuit — M-Pesa Payments for Developers",
-        template: "%s | Paysuit fintech",
+        template: "%s | Paysuit Fintech",
     },
 
     description:
-        "Add M-Pesa payments to your apps in minutes. One API call, instant settlement, zero bureaucracy.",
+        "Add M-Pesa payments to your applications in minutes. One API, instant settlement, zero bureaucracy.",
 
     applicationName: "Paysuit",
     generator: "Next.js",
@@ -60,17 +60,17 @@ export const metadata: Metadata = {
 
     keywords: [
         "Paysuit",
-        "Paysuit fintech",
+        "Paysuit Fintech",
         "M-Pesa API",
         "Daraja API",
         "payments API",
         "mobile money integration",
-        "developer tools",
+        "developer payments",
         "payments infrastructure",
-        "African startups",
+        "African fintech",
         "fintech",
-        "M-Pesa STK",
-        "Malipo SDK"
+        "M-Pesa STK Push",
+        "Paysuit SDK"
     ],
 
     authors: [
@@ -80,8 +80,8 @@ export const metadata: Metadata = {
         },
     ],
 
-    creator: "Paysuit ",
-    publisher: "Paysuit Tech",
+    creator: "Paysuit Fintech",
+    publisher: "Paysuit Fintech",
 
     icons: {
         icon: [
@@ -100,14 +100,14 @@ export const metadata: Metadata = {
 
     openGraph: {
         type: "website",
-        url: "https://malipo.aistartupclub.com",
+        url: "https://paysuit.aistartupclub.com",
         title: "Paysuit — M-Pesa Payments for Developers",
         description:
-            "The fastest way to integrate M-Pesa. Instant payments, simple SDKs, no bureaucracy.",
-        siteName: "Paysuit ",
+            "The fastest way to integrate M-Pesa payments. Clean APIs, instant settlement, built for developers.",
+        siteName: "Paysuit",
         images: [
             {
-                url: "https://malipo.aistartupclub.com/og-image.png",
+                url: "https://paysuit.aistartupclub.com/og-image.png",
                 width: 1200,
                 height: 630,
                 alt: "Paysuit — M-Pesa Payments for Developers"
@@ -119,13 +119,15 @@ export const metadata: Metadata = {
         card: "summary_large_image",
         title: "Paysuit — M-Pesa Payments for Developers",
         description:
-            "Integrate M-Pesa in minutes with clean APIs and SDKs.",
-        images: ["https://malipo.aistartupclub.com/og-image.png"],
-        creator: "@malipotech"
+            "Integrate M-Pesa payments in minutes using clean APIs and modern SDKs.",
+        images: ["https://paysuit.aistartupclub.com/og-image.png"],
+        creator: "@paysuit"
     },
 
     category: "finance",
-    alternates: { canonical: "https://malipo.aistartupclub.com/" },
+    alternates: {
+        canonical: "https://paysuit.aistartupclub.com/"
+    },
 
     appleWebApp: {
         capable: true,
@@ -170,15 +172,16 @@ export default function RootLayout({
                 __html: JSON.stringify({
                     "@context": "https://schema.org",
                     "@type": "SoftwareApplication",
-                    name: "Malipo Tech",
+                    name: "Paysuit",
                     applicationCategory: "FinanceApplication",
                     operatingSystem: "Web",
                     description:
-                        "M-Pesa payments API for developers. Integrate payments instantly with modern SDKs.",
-                    url: "https://malipo.aistartupclub.com",
+                        "Developer-first M-Pesa payments API. Integrate mobile money instantly using secure, modern SDKs.",
+                    url: "https://paysuit.aistartupclub.com",
                     creator: {
                         "@type": "Organization",
-                        name: "Malipo Tech",
+                        name: "Paysuit Fintech",
+                        url: "https://paysuit.aistartupclub.com"
                     }
                 }),
             }}
