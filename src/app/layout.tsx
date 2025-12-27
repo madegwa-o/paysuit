@@ -151,6 +151,7 @@ export default function RootLayout({
                 <Suspense fallback={null}>
                     <Header />
                     {children}
+
                     <Analytics />
                 </Suspense>
 
