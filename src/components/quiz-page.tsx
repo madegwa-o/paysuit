@@ -264,7 +264,8 @@ export default function FintechQuizGame() {
                             <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-tight mb-6">
                                 <span className="text-foreground">  It Pays</span>
                                 <br />
-                                <span className="text-foreground"> To Be Here.</span>
+                                <span className="text-foreground"> To Be Not Webs.</span>
+                                {/*<span className="text-foreground"> To Be Here.</span>*/}
                                 <br />
                                 <span className="bg-gradient-to-r from-green-600 to-green-400 dark:from-green-600 dark:to-green-200 bg-clip-text text-transparent">
                                     Paysuit
