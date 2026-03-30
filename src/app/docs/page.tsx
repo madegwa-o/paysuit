@@ -8,14 +8,14 @@ export default function DocsPage() {
             <div className="mb-12">
                 <h1 className="font-bold text-4xl mb-4">Documentation</h1>
                 <p className="text-muted-foreground text-lg">
-                    Learn how to integrate and use <strong>Malipo</strong> to collect payments securely through M-Pesa.
+                    Learn how to integrate and use <strong>Paysuit</strong> to collect payments securely through M-Pesa.
                 </p>
             </div>
 
             <Alert className="mb-8 border-primary/50 bg-primary/5">
                 <AlertCircle className="h-4 w-4 text-primary" />
                 <AlertDescription>
-                    <strong>Important:</strong> Malipo is a paywall and payment API provider that connects seamlessly with
+                    <strong>Important:</strong> Paysuit is a fintech payment API provider that connects seamlessly with
                     M-Pesa. Always test your integrations using the M-Pesa Sandbox before going live with production credentials.
                 </AlertDescription>
             </Alert>
@@ -39,7 +39,7 @@ export default function DocsPage() {
                             <div>
                                 <h3 className="font-semibold mb-2">Setup Guide</h3>
                                 <ol className="list-decimal list-inside space-y-2 text-muted-foreground text-sm">
-                                    <li>Sign up and create your organization on the Malipo dashboard</li>
+                                    <li>Sign up and create your organization on the Paysuit dashboard</li>
                                     <li>Obtain your <strong>Consumer Key</strong> and <strong>Consumer Secret</strong></li>
                                     <li>Register your <strong>Callback URL</strong></li>
                                     <li>Use your credentials to initiate a payment request</li>
@@ -169,7 +169,7 @@ export default function DocsPage() {
                             <div>
                                 <h3 className="font-semibold mb-2">Certificate Encryption</h3>
                                 <p className="text-muted-foreground text-sm leading-relaxed">
-                                    Malipo automatically encrypts your payloads using the official M-Pesa public certificate. Always ensure
+                                    Paysuit automatically encrypts your payloads using the official M-Pesa public certificate. Always ensure
                                     you are using the correct <strong>ProductionCertificate.cer</strong> or Sandbox certificate for your environment.
                                 </p>
                             </div>

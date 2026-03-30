@@ -62,11 +62,11 @@ export default function PricingPage() {
                 </p>
             </div>
 
-            <div className="grid gap-8 md:grid-cols-3 mb-16">
+            <div className="grid gap-6 md:grid-cols-3 mb-16">
                 {plans.map((plan) => (
                     <Card
                         key={plan.name}
-                        className={`relative flex flex-col ${plan.popular ? "border-primary shadow-lg scale-105" : ""}`}
+                        className={`relative flex flex-col ${plan.popular ? "border-primary border-2" : ""}`}
                     >
                         {plan.popular && (
                             <div className="absolute -top-4 left-1/2 -translate-x-1/2">

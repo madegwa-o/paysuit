@@ -41,6 +41,7 @@ export function Header() {
 
     const navLinks = [
         { label: "Home", href: "/" },
+        { label: "API Testing", href: "/api-testing" },
         { label: "Wallet", href: "/wallet" },
         { label: "Transactions", href: "/transactions" },
         { label: "Pricing", href: "/pricing" },

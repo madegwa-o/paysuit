@@ -283,10 +283,10 @@ export default function AccountPage() {
                         <CardContent>
                             {/* Uncomment when ShareComponent is ready */}
                             {/*<ShareComponent*/}
-                            {/*    url="https://malipo.app"*/}
-                            {/*    title="Join Malipo - Smart Payments 🚀"*/}
-                            {/*    description="Experience the future of payments with Malipo"*/}
-                            {/*    hashtag="#MalipoApp"*/}
+                            {/*    url="https://paysuit.app"*/}
+                            {/*    title="Join Paysuit - M-Pesa Fintech 🚀"*/}
+                            {/*    description="Experience the future of payments with Paysuit"*/}
+                            {/*    hashtag="#PaysuitApp"*/}
                             {/*    platforms={['facebook', 'twitter', 'linkedin', 'whatsapp', 'native']}*/}
                             {/*    size={50}*/}
                             {/*/>*/}
@@ -305,7 +305,7 @@ export default function AccountPage() {
                                 <Bell className="h-5 w-5" />
                                 Notifications
                             </CardTitle>
-                            <CardDescription>Manage how you receive notifications from Malipo.</CardDescription>
+                            <CardDescription>Manage how you receive notifications from Paysuit.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <div className="flex items-center justify-between">
