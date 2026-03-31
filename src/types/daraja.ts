@@ -1,6 +1,6 @@
 export interface DarajaAuthSuccessResponse {
   access_token: string
-  expires_in: number
+  expires_in: number | string
 }
 
 export interface DarajaErrorResponse {

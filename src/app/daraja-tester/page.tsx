@@ -39,6 +39,7 @@ const BASE = {
   sandbox: "https://sandbox.safaricom.co.ke",
   production: "https://api.safaricom.co.ke",
 }
+const STK_TRANSACTION_TYPES: DarajaStkPushRequest["TransactionType"][] = ["CustomerPayBillOnline", "CustomerBuyGoodsOnline"]
 
 // ─── Shared helpers ──────────────────────────────────────────────────────────
 
@@ -51,12 +52,14 @@ function getPassword(shortCode: string, passkey: string, ts: string) {
 function getAutoSecurityCredential(initiator: string, secret: string) {
   return btoa(`${initiator}:${secret}:${getTimestamp()}`)
 }
-function getApiErrorMessage(data: DarajaErrorResponse) {
+function getApiErrorMessage(data: unknown) {
+  const payload = (data && typeof data === "object") ? data as Record<string, unknown> : {}
   return String(
-    data.errorMessage
-      || data.error_description
-      || data.ResponseDescription
-      || data.ResultDesc
+    payload.errorMessage
+      || payload.error_description
+      || payload.ResponseDescription
+      || payload.ResultDesc
+      || payload.error
       || "Request failed.",
   )
 }
@@ -241,8 +244,9 @@ export default function Page() {
       const res = await fetch(`/api/mpesa/auth?env=${env}&credentials=${encodeURIComponent(creds)}`)
       const data = (await res.json()) as DarajaAuthResponse
       const successData = data as DarajaAuthSuccessResponse
-      if (typeof successData.access_token === "string" && typeof successData.expires_in === "number") {
-        setAuthToken({ access_token: successData.access_token, expires_in: successData.expires_in, generated_at: Date.now() })
+      const expiresIn = Number(successData.expires_in)
+      if (typeof successData.access_token === "string" && Number.isFinite(expiresIn) && expiresIn > 0) {
+        setAuthToken({ access_token: successData.access_token, expires_in: expiresIn, generated_at: Date.now() })
         setTokenStatus("success")
       } else {
         setTokenError(getApiErrorMessage(data))
@@ -269,7 +273,7 @@ export default function Page() {
       const success = responseCode === "0" || resultCode === "0" || (res.ok && !data.errorCode)
       setResult(key, {
         status: success ? "success" : "error",
-        response: data,
+        response: data as Record<string, unknown>,
         error: success ? "" : getApiErrorMessage(data),
         timestamp: timestamp(),
         httpStatus: res.status,
@@ -287,7 +291,7 @@ export default function Page() {
   const [stkCallback, setStkCallback] = useState("https://mydomain.com/callback")
   const [stkRef, setStkRef] = useState("PaysuiteRef")
   const [stkDesc, setStkDesc] = useState("Payment")
-  const [stkType, setStkType] = useState("CustomerPayBillOnline")
+  const [stkType, setStkType] = useState<DarajaStkPushRequest["TransactionType"]>("CustomerPayBillOnline")
   const [stkPartyB, setStkPartyB] = useState("174379")
 
   // STK Query
@@ -367,18 +371,42 @@ export default function Page() {
   // ── API callers ───────────────────────────────────────────────────────────
 
   const sendSTK = () => {
-    const ts = getTimestamp()
-    const payload: DarajaStkPushRequest = {
-      BusinessShortCode: parseInt(shortCode),
-      Password: getPassword(shortCode, passkey, ts),
-      Timestamp: ts, TransactionType: stkType,
-      Amount: stkAmount, PartyA: stkPhone,
-      PartyB: stkPartyB, PhoneNumber: stkPhone,
-      CallBackURL: stkCallback,
-      AccountReference: stkRef.slice(0, 12),
-      TransactionDesc: stkDesc.slice(0, 13),
-    }
-    call("stk", `${base}/mpesa/stkpush/v1/processrequest`, payload)
+    if (!isTokenValid()) { setResult("stk", { status: "error", error: "No valid token. Generate one first.", timestamp: timestamp() }); return }
+    setResult("stk", { status: "loading", response: null, error: "" })
+    fetch("/api/mpesa/stkpush", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        env,
+        accessToken: authToken!.access_token,
+        shortCode,
+        passkey,
+        transactionType: stkType,
+        amount: stkAmount,
+        partyA: stkPhone,
+        partyB: stkPartyB || shortCode,
+        phoneNumber: stkPhone,
+        callbackUrl: stkCallback,
+        accountReference: stkRef,
+        transactionDesc: stkDesc,
+      }),
+    })
+      .then(async res => {
+        const data = (await res.json()) as DarajaErrorResponse
+        const responseCode = String(data.ResponseCode ?? "")
+        const resultCode = String(data.ResultCode ?? "")
+        const success = responseCode === "0" || resultCode === "0" || (res.ok && !data.errorCode)
+        setResult("stk", {
+          status: success ? "success" : "error",
+          response: data as Record<string, unknown>,
+          error: success ? "" : getApiErrorMessage(data),
+          timestamp: timestamp(),
+          httpStatus: res.status,
+        })
+      })
+      .catch(e => {
+        setResult("stk", { status: "error", error: String(e), timestamp: timestamp() })
+      })
   }
 
   const sendSTKQuery = () => {
@@ -641,7 +669,7 @@ export default function Page() {
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Type</Label>
               <div className="flex gap-1.5">
-                {["CustomerPayBillOnline", "CustomerBuyGoodsOnline"].map(t => (
+                {STK_TRANSACTION_TYPES.map(t => (
                   <button key={t} onClick={() => setStkType(t)}
                     className={`flex-1 py-2 px-2 text-xs font-medium rounded-xl border transition-all ${
                       stkType === t ? "bg-foreground text-background border-foreground" : "bg-muted/30 text-muted-foreground border-border/70"
@@ -892,7 +920,7 @@ export default function Page() {
 
         {/* Footer */}
         <p className="text-center text-xs text-muted-foreground pb-8">
-          Credentials stay in-browser only. Requests are proxied server-side via <code className="font-mono">/api/mpesa/proxy</code>.
+          Requests are routed server-side via <code className="font-mono">/api/mpesa/**</code> endpoints (for example <code className="font-mono">/api/mpesa/stkpush</code> and <code className="font-mono">/api/mpesa/proxy</code>).
         </p>
       </div>
     </div>
