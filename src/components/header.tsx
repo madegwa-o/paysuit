@@ -41,6 +41,7 @@ export function Header() {
 
     const navLinks = [
         { label: "Home", href: "/" },
+        { label: "Daraja Tester", href: "/daraja-tester" },
         { label: "Wallet", href: "/wallet" },
         { label: "Transactions", href: "/transactions" },
         { label: "Pricing", href: "/pricing" },

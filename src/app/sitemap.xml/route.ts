@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 
 export async function GET() {
-    const baseUrl = "https://malipo.aistartupclub.com";
+    const baseUrl = "https://aistartupclub.com";
 
     const pages = [
         "",
+        "/daraja-tester",
         "/wallet",
         "/transactions",
         "/pricing",
