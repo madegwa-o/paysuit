@@ -42,7 +42,7 @@ function getPassword(shortCode: string, passkey: string, ts: string) {
   return btoa(`${shortCode}${passkey}${ts}`)
 }
 
-// ─── Section wrapper ─────────────────────────────────────────────────────────
+// ─── Section wrapper ───────────────────────────────────────────────────
 
 function Section({
   icon: Icon, title, endpoint, children, result, defaultOpen = false
