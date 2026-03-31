@@ -1,6 +1,7 @@
   "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
+import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -196,6 +197,9 @@ function ActionButton({ onClick, loading, label, disabled }: {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Page() {
+  const { status } = useSession()
+  const isLoggedIn = status === "authenticated"
+
   const [env, setEnv] = useState<Environment>("sandbox")
   const [consumerKey, setConsumerKey] = useState("")
   const [consumerSecret, setConsumerSecret] = useState("")
@@ -209,6 +213,8 @@ export default function Page() {
 
   // Per-API results
   const [results, setResults] = useState<Record<string, ApiResult>>({})
+  const [savedCredentialsMessage, setSavedCredentialsMessage] = useState("")
+  const [credentialsLoading, setCredentialsLoading] = useState(false)
 
   const base = BASE[env]
 
@@ -231,6 +237,83 @@ export default function Page() {
     })
 
   const timestamp = () => new Date().toLocaleTimeString()
+
+  const loadSavedCredentials = useCallback(async () => {
+    if (!isLoggedIn) return
+    setCredentialsLoading(true)
+    setSavedCredentialsMessage("")
+    try {
+      const res = await fetch(`/api/user/daraja-credentials?env=${env}`)
+      const data = await res.json() as {
+        credentials?: {
+          consumerKey?: string
+          consumerSecret?: string
+          passkey?: string
+          initiatorName?: string
+          shortCode?: string
+        } | null
+        error?: string
+      }
+
+      if (!res.ok) {
+        setSavedCredentialsMessage(data.error || "Failed to load saved credentials.")
+        return
+      }
+
+      const saved = data.credentials
+      if (!saved) {
+        setSavedCredentialsMessage(`No saved ${env} credentials found.`)
+        return
+      }
+
+      setConsumerKey(saved.consumerKey || "")
+      setConsumerSecret(saved.consumerSecret || "")
+      setPasskey(saved.passkey || "")
+      setInitiatorName(saved.initiatorName || "")
+      setShortCode(saved.shortCode || (env === "sandbox" ? "174379" : ""))
+      setSavedCredentialsMessage(`Loaded saved ${env} credentials.`)
+    } catch {
+      setSavedCredentialsMessage("Failed to load saved credentials.")
+    } finally {
+      setCredentialsLoading(false)
+    }
+  }, [env, isLoggedIn])
+
+  const saveCredentials = async () => {
+    if (!isLoggedIn) return
+    setCredentialsLoading(true)
+    setSavedCredentialsMessage("")
+    try {
+      const res = await fetch("/api/user/daraja-credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          environment: env,
+          consumerKey,
+          consumerSecret,
+          passkey,
+          initiatorName,
+          shortCode,
+        }),
+      })
+      const data = await res.json() as { message?: string; error?: string }
+      if (!res.ok) {
+        setSavedCredentialsMessage(data.error || "Failed to save credentials.")
+        return
+      }
+      setSavedCredentialsMessage(data.message || `Saved ${env} credentials.`)
+    } catch {
+      setSavedCredentialsMessage("Failed to save credentials.")
+    } finally {
+      setCredentialsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      void loadSavedCredentials()
+    }
+  }, [env, isLoggedIn, loadSavedCredentials])
 
   // ── Auth ──────────────────────────────────────────────────────────────────
 
@@ -622,6 +705,34 @@ export default function Page() {
                 readOnly
               />
             </Grid2>
+            <div className="rounded-xl border border-border/70 bg-muted/20 p-3 space-y-2">
+              <p className="text-xs text-muted-foreground">
+                {isLoggedIn
+                  ? "Signed in: save these credentials to auto-load them next time."
+                  : "Login to save your credentials."}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  onClick={saveCredentials}
+                  disabled={!isLoggedIn || credentialsLoading}
+                  className="flex-1 rounded-xl h-9 text-sm"
+                  variant="secondary"
+                >
+                  {credentialsLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Save credentials"}
+                </Button>
+                <Button
+                  onClick={() => void loadSavedCredentials()}
+                  disabled={!isLoggedIn || credentialsLoading}
+                  className="flex-1 rounded-xl h-9 text-sm bg-transparent"
+                  variant="outline"
+                >
+                  {credentialsLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Load saved"}
+                </Button>
+              </div>
+              {savedCredentialsMessage && (
+                <p className="text-xs text-muted-foreground">{savedCredentialsMessage}</p>
+              )}
+            </div>
 
             {tokenError && (
               <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-xl">
