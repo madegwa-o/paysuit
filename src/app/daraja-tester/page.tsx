@@ -5,8 +5,14 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import type {
+  DarajaAuthResponse,
+  DarajaAuthSuccessResponse,
+  DarajaErrorResponse,
+  DarajaStkPushRequest,
+} from "@/types/daraja"
 import {
-  Key, Eye, EyeOff, RefreshCw, Shield, ChevronDown, ChevronUp,
+  Key, RefreshCw, Shield, ChevronDown, ChevronUp,
   Loader2, CheckCircle2, XCircle, AlertCircle, Send, Terminal,
   Zap, Activity, CreditCard, ArrowLeftRight, BarChart3, QrCode,
   FileText, Repeat, Wallet, Users, Copy, Check
@@ -26,6 +32,7 @@ interface ApiResult {
   response: Record<string, unknown> | null
   error: string
   timestamp: string
+  httpStatus?: number
 }
 
 const BASE = {
@@ -40,6 +47,19 @@ function getTimestamp() {
 }
 function getPassword(shortCode: string, passkey: string, ts: string) {
   return btoa(`${shortCode}${passkey}${ts}`)
+}
+function getAutoSecurityCredential(initiator: string, secret: string) {
+  return btoa(`${initiator}:${secret}:${getTimestamp()}`)
+}
+function getApiErrorMessage(data: Partial<DarajaErrorResponse> & { error?: string }) {
+  return String(
+    data.error
+      || data.errorMessage
+      || data.error_description
+      || data.ResponseDescription
+      || data.ResultDesc
+      || "Request failed.",
+  )
 }
 
 // ─── Section wrapper ───────────────────────────────────────────────────
@@ -110,6 +130,7 @@ function Section({
                   <Terminal className="w-3.5 h-3.5 text-muted-foreground" />
                   <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Response</span>
                   {result.timestamp && <span className="text-xs text-muted-foreground">· {result.timestamp}</span>}
+                  {!!result.httpStatus && <span className="text-xs text-muted-foreground">· HTTP {result.httpStatus}</span>}
                 </div>
                 <button onClick={copyResult} className="text-muted-foreground hover:text-foreground transition-colors">
                   {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
@@ -132,9 +153,9 @@ function Section({
 
 // ─── Field helpers ────────────────────────────────────────────────────────────
 
-function Field({ label, value, onChange, placeholder, type = "text", hint }: {
+function Field({ label, value, onChange, placeholder, type = "text", hint, readOnly = false }: {
   label: string; value: string; onChange: (v: string) => void
-  placeholder?: string; type?: string; hint?: string
+  placeholder?: string; type?: string; hint?: string; readOnly?: boolean
 }) {
   return (
     <div className="space-y-1.5">
@@ -142,6 +163,7 @@ function Field({ label, value, onChange, placeholder, type = "text", hint }: {
       <Input
         type={type} value={value} onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
+        readOnly={readOnly}
         className="bg-muted/30 border-border/70 rounded-xl font-mono text-sm h-9"
       />
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
@@ -175,10 +197,8 @@ export default function Page() {
   const [env, setEnv] = useState<Environment>("sandbox")
   const [consumerKey, setConsumerKey] = useState("")
   const [consumerSecret, setConsumerSecret] = useState("")
-  const [showSecret, setShowSecret] = useState(false)
   const [passkey, setPasskey] = useState("")
   const [initiatorName, setInitiatorName] = useState("")
-  const [securityCredential, setSecurityCredential] = useState("")
   const [shortCode, setShortCode] = useState("174379")
 
   const [authToken, setAuthToken] = useState<AuthToken | null>(null)
@@ -218,12 +238,13 @@ export default function Page() {
     try {
       const creds = btoa(`${consumerKey}:${consumerSecret}`)
       const res = await fetch(`/api/mpesa/auth?env=${env}&credentials=${encodeURIComponent(creds)}`)
-      const data = (await res.json()) as Partial<AuthToken> & Record<string, unknown>
-      if (typeof data.access_token === "string" && typeof data.expires_in === "number") {
-        setAuthToken({ access_token: data.access_token, expires_in: data.expires_in, generated_at: Date.now() })
+      const data = (await res.json()) as DarajaAuthResponse
+      const successData = data as DarajaAuthSuccessResponse
+      if (typeof successData.access_token === "string" && typeof successData.expires_in === "number") {
+        setAuthToken({ access_token: successData.access_token, expires_in: successData.expires_in, generated_at: Date.now() })
         setTokenStatus("success")
       } else {
-        setTokenError(String(data.errorMessage || data.error_description || "Token generation failed."))
+        setTokenError(getApiErrorMessage(data))
         setTokenStatus("error")
       }
     } catch { setTokenError("Network error. Ensure API route /api/mpesa/auth exists."); setTokenStatus("error") }
@@ -241,13 +262,16 @@ export default function Page() {
         ...(method !== "GET" && { body: JSON.stringify(body) }),
       }
       const res = await fetch(`/api/mpesa/proxy?url=${encodeURIComponent(url)}`, opts)
-      const data = (await res.json()) as Record<string, unknown>
-      const success = data.ResponseCode === "0" || data.ResultCode === "0" || res.ok
+      const data = (await res.json()) as DarajaErrorResponse
+      const responseCode = String(data.ResponseCode ?? "")
+      const resultCode = String(data.ResultCode ?? "")
+      const success = responseCode === "0" || resultCode === "0" || (res.ok && !data.errorCode)
       setResult(key, {
         status: success ? "success" : "error",
         response: data,
-        error: success ? "" : String(data.errorMessage || data.ResponseDescription || "Request failed."),
+        error: success ? "" : getApiErrorMessage(data),
         timestamp: timestamp(),
+        httpStatus: res.status,
       })
     } catch (e) {
       setResult(key, { status: "error", error: String(e), timestamp: timestamp() })
@@ -343,7 +367,7 @@ export default function Page() {
 
   const sendSTK = () => {
     const ts = getTimestamp()
-    call("stk", `${base}/mpesa/stkpush/v1/processrequest`, {
+    const payload: DarajaStkPushRequest = {
       BusinessShortCode: parseInt(shortCode),
       Password: getPassword(shortCode, passkey, ts),
       Timestamp: ts, TransactionType: stkType,
@@ -352,7 +376,8 @@ export default function Page() {
       CallBackURL: stkCallback,
       AccountReference: stkRef.slice(0, 12),
       TransactionDesc: stkDesc.slice(0, 13),
-    })
+    }
+    call("stk", `${base}/mpesa/stkpush/v1/processrequest`, payload)
   }
 
   const sendSTKQuery = () => {
@@ -375,9 +400,10 @@ export default function Page() {
   }
 
   const sendB2C = () => {
+    const generatedSecurityCredential = getAutoSecurityCredential(initiatorName, consumerSecret)
     call("b2c", `${base}/mpesa/b2c/v1/paymentrequest`, {
       InitiatorName: initiatorName,
-      SecurityCredential: securityCredential,
+      SecurityCredential: generatedSecurityCredential,
       CommandID: b2cCommand,
       Amount: b2cAmount,
       PartyA: b2cShortCode,
@@ -390,9 +416,10 @@ export default function Page() {
   }
 
   const sendB2B = () => {
+    const generatedSecurityCredential = getAutoSecurityCredential(initiatorName, consumerSecret)
     call("b2b", `${base}/mpesa/b2b/v1/paymentrequest`, {
       Initiator: initiatorName,
-      SecurityCredential: securityCredential,
+      SecurityCredential: generatedSecurityCredential,
       CommandID: b2bCommand,
       SenderIdentifierType: "4",
       ReceiverIdentifierType: "4",
@@ -407,9 +434,10 @@ export default function Page() {
   }
 
   const sendBalance = () => {
+    const generatedSecurityCredential = getAutoSecurityCredential(initiatorName, consumerSecret)
     call("balance", `${base}/mpesa/accountbalance/v1/query`, {
       Initiator: initiatorName,
-      SecurityCredential: securityCredential,
+      SecurityCredential: generatedSecurityCredential,
       CommandID: "AccountBalance",
       PartyA: balShortCode,
       IdentifierType: balIdType,
@@ -420,9 +448,10 @@ export default function Page() {
   }
 
   const sendTxStatus = () => {
+    const generatedSecurityCredential = getAutoSecurityCredential(initiatorName, consumerSecret)
     call("txstatus", `${base}/mpesa/transactionstatus/v1/query`, {
       Initiator: initiatorName,
-      SecurityCredential: securityCredential,
+      SecurityCredential: generatedSecurityCredential,
       CommandID: "TransactionStatusQuery",
       TransactionID: tsTransId,
       PartyA: tsShortCode,
@@ -435,9 +464,10 @@ export default function Page() {
   }
 
   const sendReversal = () => {
+    const generatedSecurityCredential = getAutoSecurityCredential(initiatorName, consumerSecret)
     call("reversal", `${base}/mpesa/reversal/v1/request`, {
       Initiator: initiatorName,
-      SecurityCredential: securityCredential,
+      SecurityCredential: generatedSecurityCredential,
       CommandID: "TransactionReversal",
       TransactionID: revTransId,
       Amount: revAmount,
@@ -537,16 +567,13 @@ export default function Page() {
               <Field label="Consumer Key" value={consumerKey} onChange={setConsumerKey} placeholder="From Daraja My Apps" />
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Consumer Secret</Label>
-                <div className="relative">
-                  <Input type={showSecret ? "text" : "password"} value={consumerSecret}
-                    onChange={e => setConsumerSecret(e.target.value)}
-                    placeholder="Consumer Secret"
-                    className="bg-muted/30 border-border/70 rounded-xl font-mono text-sm h-9 pr-9" />
-                  <button onClick={() => setShowSecret(!showSecret)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                    {showSecret ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                  </button>
-                </div>
+                <Input
+                  type="text"
+                  value={consumerSecret}
+                  onChange={e => setConsumerSecret(e.target.value)}
+                  placeholder="Consumer Secret"
+                  className="bg-muted/30 border-border/70 rounded-xl font-mono text-sm h-9"
+                />
               </div>
             </Grid2>
             <Grid2>
@@ -557,8 +584,14 @@ export default function Page() {
             <Grid2>
               <Field label="Initiator Name" value={initiatorName} onChange={setInitiatorName}
                 placeholder="API operator username" hint="For B2C, B2B, Balance etc." />
-              <Field label="Security Credential" value={securityCredential} onChange={setSecurityCredential}
-                placeholder="Encrypted credential" type="password" />
+              <Field
+                label="Security Credential"
+                value={getAutoSecurityCredential(initiatorName || "initiator", consumerSecret || "consumer-secret")}
+                onChange={() => undefined}
+                placeholder="Auto generated"
+                hint="Auto-generated in logic for requests that require it."
+                readOnly
+              />
             </Grid2>
 
             {tokenError && (
