@@ -244,8 +244,9 @@ export default function Page() {
       const res = await fetch(`/api/mpesa/auth?env=${env}&credentials=${encodeURIComponent(creds)}`)
       const data = (await res.json()) as DarajaAuthResponse
       const successData = data as DarajaAuthSuccessResponse
-      if (typeof successData.access_token === "string" && typeof successData.expires_in === "number") {
-        setAuthToken({ access_token: successData.access_token, expires_in: successData.expires_in, generated_at: Date.now() })
+      const expiresIn = Number(successData.expires_in)
+      if (typeof successData.access_token === "string" && Number.isFinite(expiresIn) && expiresIn > 0) {
+        setAuthToken({ access_token: successData.access_token, expires_in: expiresIn, generated_at: Date.now() })
         setTokenStatus("success")
       } else {
         setTokenError(getApiErrorMessage(data))
