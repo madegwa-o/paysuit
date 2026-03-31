@@ -58,6 +58,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    console.log(`fetching from: ${BASE_BY_ENV[env]}/mpesa/stkpush/v1/processrequest`)
+
     const response = await fetch(`${BASE_BY_ENV[env]}/mpesa/stkpush/v1/processrequest`, {
       method: "POST",
       headers: {
@@ -68,6 +70,8 @@ export async function POST(req: NextRequest) {
     })
 
     const data = await response.json()
+
+    console.log("stk response: ", data)
     return NextResponse.json(data, { status: response.status })
   } catch (error) {
     console.error("STK push route error:", error)
