@@ -39,6 +39,7 @@ const BASE = {
   sandbox: "https://sandbox.safaricom.co.ke",
   production: "https://api.safaricom.co.ke",
 }
+const STK_TRANSACTION_TYPES: DarajaStkPushRequest["TransactionType"][] = ["CustomerPayBillOnline", "CustomerBuyGoodsOnline"]
 
 // ─── Shared helpers ──────────────────────────────────────────────────────────
 
@@ -51,12 +52,14 @@ function getPassword(shortCode: string, passkey: string, ts: string) {
 function getAutoSecurityCredential(initiator: string, secret: string) {
   return btoa(`${initiator}:${secret}:${getTimestamp()}`)
 }
-function getApiErrorMessage(data: DarajaErrorResponse) {
+function getApiErrorMessage(data: unknown) {
+  const payload = (data && typeof data === "object") ? data as Record<string, unknown> : {}
   return String(
-    data.errorMessage
-      || data.error_description
-      || data.ResponseDescription
-      || data.ResultDesc
+    payload.errorMessage
+      || payload.error_description
+      || payload.ResponseDescription
+      || payload.ResultDesc
+      || payload.error
       || "Request failed.",
   )
 }
@@ -269,7 +272,7 @@ export default function Page() {
       const success = responseCode === "0" || resultCode === "0" || (res.ok && !data.errorCode)
       setResult(key, {
         status: success ? "success" : "error",
-        response: data,
+        response: data as Record<string, unknown>,
         error: success ? "" : getApiErrorMessage(data),
         timestamp: timestamp(),
         httpStatus: res.status,
@@ -287,7 +290,7 @@ export default function Page() {
   const [stkCallback, setStkCallback] = useState("https://mydomain.com/callback")
   const [stkRef, setStkRef] = useState("PaysuiteRef")
   const [stkDesc, setStkDesc] = useState("Payment")
-  const [stkType, setStkType] = useState("CustomerPayBillOnline")
+  const [stkType, setStkType] = useState<DarajaStkPushRequest["TransactionType"]>("CustomerPayBillOnline")
   const [stkPartyB, setStkPartyB] = useState("174379")
 
   // STK Query
@@ -641,7 +644,7 @@ export default function Page() {
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Type</Label>
               <div className="flex gap-1.5">
-                {["CustomerPayBillOnline", "CustomerBuyGoodsOnline"].map(t => (
+                {STK_TRANSACTION_TYPES.map(t => (
                   <button key={t} onClick={() => setStkType(t)}
                     className={`flex-1 py-2 px-2 text-xs font-medium rounded-xl border transition-all ${
                       stkType === t ? "bg-foreground text-background border-foreground" : "bg-muted/30 text-muted-foreground border-border/70"
