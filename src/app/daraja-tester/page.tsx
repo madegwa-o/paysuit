@@ -371,18 +371,42 @@ export default function Page() {
   // ── API callers ───────────────────────────────────────────────────────────
 
   const sendSTK = () => {
-    const ts = getTimestamp()
-    const payload: DarajaStkPushRequest = {
-      BusinessShortCode: parseInt(shortCode),
-      Password: getPassword(shortCode, passkey, ts),
-      Timestamp: ts, TransactionType: stkType,
-      Amount: stkAmount, PartyA: stkPhone,
-      PartyB: stkPartyB, PhoneNumber: stkPhone,
-      CallBackURL: stkCallback,
-      AccountReference: stkRef.slice(0, 12),
-      TransactionDesc: stkDesc.slice(0, 13),
-    }
-    call("stk", `${base}/mpesa/stkpush/v1/processrequest`, payload)
+    if (!isTokenValid()) { setResult("stk", { status: "error", error: "No valid token. Generate one first.", timestamp: timestamp() }); return }
+    setResult("stk", { status: "loading", response: null, error: "" })
+    fetch("/api/mpesa/stkpush", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        env,
+        accessToken: authToken!.access_token,
+        shortCode,
+        passkey,
+        transactionType: stkType,
+        amount: stkAmount,
+        partyA: stkPhone,
+        partyB: stkPartyB || shortCode,
+        phoneNumber: stkPhone,
+        callbackUrl: stkCallback,
+        accountReference: stkRef,
+        transactionDesc: stkDesc,
+      }),
+    })
+      .then(async res => {
+        const data = (await res.json()) as DarajaErrorResponse
+        const responseCode = String(data.ResponseCode ?? "")
+        const resultCode = String(data.ResultCode ?? "")
+        const success = responseCode === "0" || resultCode === "0" || (res.ok && !data.errorCode)
+        setResult("stk", {
+          status: success ? "success" : "error",
+          response: data as Record<string, unknown>,
+          error: success ? "" : getApiErrorMessage(data),
+          timestamp: timestamp(),
+          httpStatus: res.status,
+        })
+      })
+      .catch(e => {
+        setResult("stk", { status: "error", error: String(e), timestamp: timestamp() })
+      })
   }
 
   const sendSTKQuery = () => {
@@ -896,7 +920,7 @@ export default function Page() {
 
         {/* Footer */}
         <p className="text-center text-xs text-muted-foreground pb-8">
-          Credentials stay in-browser only. Requests are proxied server-side via <code className="font-mono">/api/mpesa/proxy</code>.
+          Requests are routed server-side via <code className="font-mono">/api/mpesa/**</code> endpoints (for example <code className="font-mono">/api/mpesa/stkpush</code> and <code className="font-mono">/api/mpesa/proxy</code>).
         </p>
       </div>
     </div>
