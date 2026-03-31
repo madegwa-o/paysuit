@@ -548,7 +548,7 @@ export default function Page() {
               className={`flex-1 py-2.5 text-sm font-semibold rounded-xl transition-all capitalize ${
                 env === e ? "bg-foreground text-background shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}>
-              {e === "sandbox" ? "🧪 Sandbox" : "🚀 Production"}
+              {e === "sandbox" ? "Sandbox" : "Production"}
             </button>
           ))}
         </Card>
