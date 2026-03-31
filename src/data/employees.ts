@@ -28,7 +28,7 @@ export const employees: Employee[] = [
     { name: "Felix D", manager: "Oliver K", role: "Design Manager", jobFamily: "Design" },
 
     // Operations Manager
-    { name: "Iris V", manager: "Nina P", role: "Operations Manager", jobFamily: "Operations" },
+    { name: "Iris V", manager: "Nina Page", role: "Operations Manager", jobFamily: "Operations" },
 
     // Engineering Individual Contributors
     { name: "Theo B", manager: "Diego M", role: "Senior Software Engineer", jobFamily: "Engineering" },
