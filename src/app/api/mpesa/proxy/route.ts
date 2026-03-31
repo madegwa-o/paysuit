@@ -1,4 +1,4 @@
-// app/api/test_credentials/route.ts
+// app/api/mpesa/proxy/route.ts
 // Generic proxy for ALL Daraja API endpoints — avoids CORS
 
 import { NextRequest, NextResponse } from "next/server"
