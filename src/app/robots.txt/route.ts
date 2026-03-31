@@ -5,7 +5,7 @@ export async function GET() {
 User-agent: *
 Allow: /
 
-Sitemap: https://malipo.aistartupclub.com/sitemap.xml
+Sitemap: https://paysuit.aistartupclub.com/sitemap.xml
 `;
 
     return new NextResponse(body, {

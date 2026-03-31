@@ -10,7 +10,8 @@ const PUBLIC_ROUTES = [
     "/signin",
     "/pricing",
     "/docs",
-    "/api/mpesa/**",
+    "/api/mpesa/auth",
+    "/api/mpesa/proxy",
     "/api/payments/direct/callback",
     // Add any other public routes here
 ];

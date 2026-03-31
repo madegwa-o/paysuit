@@ -8,6 +8,8 @@ export async function GET(req: NextRequest) {
     const env = searchParams.get("env") || "sandbox"
     const credentials = searchParams.get("credentials") || ""
 
+    console.log("Auth bckend called")
+
     const baseURL =
         env === "production"
             ? "https://api.safaricom.co.ke"
@@ -26,6 +28,8 @@ export async function GET(req: NextRequest) {
         )
 
         const data = await response.json()
+
+        console.log("Response body", data)
         return NextResponse.json(data, { status: response.status })
     } catch (error) {
         console.error("Auth token error:", error)

@@ -216,6 +216,8 @@ export default function Page() {
     if (!consumerKey || !consumerSecret) { setTokenError("Consumer Key and Secret required."); return }
     setTokenStatus("loading"); setTokenError(""); setAuthToken(null)
     try {
+
+      console.log("Auth frontend calling")
       const creds = btoa(`${consumerKey}:${consumerSecret}`)
       const res = await fetch(`/api/mpesa/auth?env=${env}&credentials=${encodeURIComponent(creds)}`)
       const data = (await res.json()) as Partial<AuthToken> & Record<string, unknown>

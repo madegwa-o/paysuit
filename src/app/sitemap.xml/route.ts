@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 export async function GET() {
-    const baseUrl = "https://aistartupclub.com";
+    const baseUrl = "https://paysuit.aistartupclub.com";
 
     const pages = [
         "",
