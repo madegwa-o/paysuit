@@ -23,7 +23,7 @@ interface AuthToken {
 
 interface ApiResult {
   status: StepStatus
-  response: unknown
+  response: Record<string, unknown> | null
   error: string
   timestamp: string
 }
@@ -56,6 +56,7 @@ function Section({
 }) {
   const [open, setOpen] = useState(defaultOpen)
   const [copied, setCopied] = useState(false)
+  const hasResponse = result?.response !== null && result?.response !== undefined
 
   const copyResult = () => {
     if (!result?.response) return
@@ -98,7 +99,7 @@ function Section({
             </div>
           )}
 
-          {result?.response && (
+          {hasResponse && result && (
             <div className={`rounded-xl border p-4 ${
               result.status === "success"
                 ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"
@@ -202,7 +203,10 @@ export default function Page() {
   }, [authToken])
 
   const setResult = (key: string, r: Partial<ApiResult>) =>
-    setResults(prev => ({ ...prev, [key]: { status: "idle", response: null, error: "", timestamp: "", ...prev[key], ...r } }))
+    setResults(prev => {
+      const existing = prev[key] ?? { status: "idle", response: null, error: "", timestamp: "" }
+      return { ...prev, [key]: { ...existing, ...r } }
+    })
 
   const timestamp = () => new Date().toLocaleTimeString()
 
@@ -214,9 +218,14 @@ export default function Page() {
     try {
       const creds = btoa(`${consumerKey}:${consumerSecret}`)
       const res = await fetch(`/api/mpesa/auth?env=${env}&credentials=${encodeURIComponent(creds)}`)
-      const data = await res.json()
-      if (data.access_token) { setAuthToken({ ...data, generated_at: Date.now() }); setTokenStatus("success") }
-      else { setTokenError(data.errorMessage || data.error_description || "Token generation failed."); setTokenStatus("error") }
+      const data = (await res.json()) as Partial<AuthToken> & Record<string, unknown>
+      if (typeof data.access_token === "string" && typeof data.expires_in === "number") {
+        setAuthToken({ access_token: data.access_token, expires_in: data.expires_in, generated_at: Date.now() })
+        setTokenStatus("success")
+      } else {
+        setTokenError(String(data.errorMessage || data.error_description || "Token generation failed."))
+        setTokenStatus("error")
+      }
     } catch { setTokenError("Network error. Ensure API route /api/mpesa/auth exists."); setTokenStatus("error") }
   }
 
@@ -232,9 +241,14 @@ export default function Page() {
         ...(method !== "GET" && { body: JSON.stringify(body) }),
       }
       const res = await fetch(`/api/mpesa/proxy?url=${encodeURIComponent(url)}`, opts)
-      const data = await res.json()
+      const data = (await res.json()) as Record<string, unknown>
       const success = data.ResponseCode === "0" || data.ResultCode === "0" || res.ok
-      setResult(key, { status: success ? "success" : "error", response: data, error: success ? "" : (data.errorMessage || data.ResponseDescription || ""), timestamp: timestamp() })
+      setResult(key, {
+        status: success ? "success" : "error",
+        response: data,
+        error: success ? "" : String(data.errorMessage || data.ResponseDescription || "Request failed."),
+        timestamp: timestamp(),
+      })
     } catch (e) {
       setResult(key, { status: "error", error: String(e), timestamp: timestamp() })
     }
@@ -381,7 +395,7 @@ export default function Page() {
       SecurityCredential: securityCredential,
       CommandID: b2bCommand,
       SenderIdentifierType: "4",
-      RecieverIdentifierType: "4",
+      ReceiverIdentifierType: "4",
       Amount: b2bAmount,
       PartyA: b2bPartyA,
       PartyB: b2bPartyB,
@@ -428,7 +442,7 @@ export default function Page() {
       TransactionID: revTransId,
       Amount: revAmount,
       ReceiverParty: revShortCode,
-      RecieverIdentifierType: "11",
+      ReceiverIdentifierType: "11",
       ResultURL: revResultUrl,
       QueueTimeOutURL: revTimeoutUrl,
       Remarks: revRemarks,
@@ -653,7 +667,7 @@ export default function Page() {
               {r("c2b_v2")?.status === "loading" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Register v2"}
             </Button>
           </div>
-          {r("c2b_v1") && r("c2b_v1")?.response && (
+          {r("c2b_v1")?.response !== null && (
             <div className="p-3 rounded-xl border border-border bg-muted/20">
               <p className="text-xs font-semibold text-muted-foreground mb-1">v1 response</p>
               <pre className="text-xs font-mono text-foreground overflow-auto max-h-24">{JSON.stringify(r("c2b_v1")?.response, null, 2)}</pre>
@@ -791,7 +805,7 @@ export default function Page() {
                 <option value="WA">WA — Withdraw Agent</option>
                 <option value="PB">PB — Pay Bill</option>
                 <option value="SM">SM — Send Money</option>
-                <option value="SB">SB — Sent Business</option>
+                <option value="SB">SB — Send to Business</option>
               </select>
             </div>
           </Grid2>
