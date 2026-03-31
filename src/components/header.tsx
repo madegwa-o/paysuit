@@ -39,6 +39,7 @@ export function Header() {
         }
     }, [isMenuOpen])
 
+    //added the route
     const navLinks = [
         { label: "Home", href: "/" },
         { label: "Daraja Tester", href: "/daraja-tester" },
