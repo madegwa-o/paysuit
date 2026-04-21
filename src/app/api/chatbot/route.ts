@@ -8,6 +8,8 @@ type ChatMessage = {
 
 type Provider = "openai" | "anthropic" | "gemini" | "openrouter";
 
+const PROVIDERS: Provider[] = ["openai", "anthropic", "gemini", "openrouter"];
+
 const ALLOWED_ROUTES = [
   "/",
   "/dashboard",
@@ -47,7 +49,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Messages are required." }, { status: 400 });
     }
 
-    const content = await generateProviderResponse({ messages, provider, model });
+    const configuredProviders = PROVIDERS.filter(isProviderConfigured);
+
+    if (configuredProviders.length === 0) {
+      return NextResponse.json(
+        {
+          error:
+            "No chatbot provider API keys are configured. Add at least one of OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY, or OPENROUTER_API_KEY in .env.local.",
+        },
+        { status: 500 }
+      );
+    }
+
+    const selectedProvider =
+      isProvider(provider) && isProviderConfigured(provider) ? provider : configuredProviders[0];
+
+    const content = await generateProviderResponse({ messages, provider: selectedProvider, model });
 
     if (!content) {
       return NextResponse.json({ error: "No response content from model." }, { status: 502 });
@@ -70,6 +87,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       reply: parsed.reply ?? "I can help with Paysuit features and navigation.",
       navigateTo: safeRoute,
+      provider: selectedProvider,
+      availableProviders: configuredProviders,
     });
   } catch (error) {
     console.error("Chatbot route error:", error);
@@ -91,6 +110,17 @@ export async function POST(req: NextRequest) {
   }
 }
 
+function isProvider(value: unknown): value is Provider {
+  return typeof value === "string" && PROVIDERS.includes(value as Provider);
+}
+
+function isProviderConfigured(provider: Provider) {
+  if (provider === "openai") return Boolean(process.env.OPENAI_API_KEY);
+  if (provider === "anthropic") return Boolean(process.env.ANTHROPIC_API_KEY);
+  if (provider === "gemini") return Boolean(process.env.GEMINI_API_KEY);
+  return Boolean(process.env.OPENROUTER_API_KEY);
+}
+
 async function generateProviderResponse({
   messages,
   provider,
@@ -101,13 +131,7 @@ async function generateProviderResponse({
   model?: string;
 }) {
   if (provider === "openai") {
-    const apiKey = process.env.OPENAI_API_KEY;
-
-    if (!apiKey) {
-      throw new Error("OPENAI_API_KEY is missing in environment.");
-    }
-
-    const openai = new OpenAI({ apiKey });
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
     const completion = await openai.chat.completions.create({
       model: model || process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini",
@@ -123,16 +147,10 @@ async function generateProviderResponse({
   }
 
   if (provider === "anthropic") {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-
-    if (!apiKey) {
-      throw new Error("ANTHROPIC_API_KEY is missing in environment.");
-    }
-
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        "x-api-key": apiKey,
+        "x-api-key": process.env.ANTHROPIC_API_KEY || "",
         "anthropic-version": "2023-06-01",
         "content-type": "application/json",
       },
@@ -157,16 +175,10 @@ async function generateProviderResponse({
   }
 
   if (provider === "gemini") {
-    const apiKey = process.env.GEMINI_API_KEY;
-
-    if (!apiKey) {
-      throw new Error("GEMINI_API_KEY is missing in environment.");
-    }
-
     const selectedModel = model || process.env.GEMINI_CHAT_MODEL || "gemini-2.0-flash";
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -198,16 +210,10 @@ async function generateProviderResponse({
     return data.candidates?.[0]?.content?.parts?.[0]?.text;
   }
 
-  const apiKey = process.env.OPENROUTER_API_KEY;
-
-  if (!apiKey) {
-    throw new Error("OPENROUTER_API_KEY is missing in environment.");
-  }
-
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
       "Content-Type": "application/json",
       ...(process.env.OPENROUTER_SITE_URL ? { "HTTP-Referer": process.env.OPENROUTER_SITE_URL } : {}),
       ...(process.env.OPENROUTER_SITE_NAME ? { "X-OpenRouter-Title": process.env.OPENROUTER_SITE_NAME } : {}),

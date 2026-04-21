@@ -77,6 +77,7 @@ export default function ChatbotWidget() {
         navigateTo?: string | null;
         error?: string;
         details?: string;
+        provider?: Provider;
       };
 
       if (!response.ok) {
@@ -85,6 +86,10 @@ export default function ChatbotWidget() {
 
       const reply = payload.reply?.trim() || "I can help with Paysuit navigation and product questions.";
       setMessages((current) => [...current, { role: "assistant", content: reply }]);
+
+      if (payload.provider && payload.provider !== provider) {
+        setProvider(payload.provider);
+      }
 
       if (payload.navigateTo && payload.navigateTo !== pathname) {
         router.push(payload.navigateTo);
