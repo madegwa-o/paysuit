@@ -9,10 +9,31 @@ type ChatMessage = {
   content: string;
 };
 
+type Provider = "openai" | "anthropic" | "gemini" | "openrouter";
+
 const STARTER_MESSAGE: ChatMessage = {
   role: "assistant",
   content:
     "Hi! I can answer Paysuit questions and navigate you to pages like dashboard, wallet, transactions, pricing, docs, or account.",
+};
+
+const MODEL_OPTIONS: Record<Provider, Array<{ label: string; value: string }>> = {
+  openai: [
+    { label: "GPT-4o mini", value: "gpt-4o-mini" },
+    { label: "GPT-4.1 mini", value: "gpt-4.1-mini" },
+  ],
+  anthropic: [
+    { label: "Claude 3.5 Haiku", value: "claude-3-5-haiku-latest" },
+    { label: "Claude 3.7 Sonnet", value: "claude-3-7-sonnet-latest" },
+  ],
+  gemini: [
+    { label: "Gemini 2.0 Flash", value: "gemini-2.0-flash" },
+    { label: "Gemini 1.5 Flash", value: "gemini-1.5-flash" },
+  ],
+  openrouter: [
+    { label: "Llama 3.3 70B (free)", value: "meta-llama/llama-3.3-70b-instruct:free" },
+    { label: "DeepSeek R1", value: "deepseek/deepseek-r1" },
+  ],
 };
 
 export default function ChatbotWidget() {
@@ -21,6 +42,8 @@ export default function ChatbotWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [input, setInput] = useState("");
+  const [provider, setProvider] = useState<Provider>("openai");
+  const [model, setModel] = useState(MODEL_OPTIONS.openai[0].value);
   const [messages, setMessages] = useState<ChatMessage[]>([STARTER_MESSAGE]);
 
   const visibleMessages = useMemo(
@@ -46,17 +69,18 @@ export default function ChatbotWidget() {
       const response = await fetch("/api/chatbot", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: nextMessages }),
+        body: JSON.stringify({ messages: nextMessages, provider, model }),
       });
 
       const payload = (await response.json()) as {
         reply?: string;
         navigateTo?: string | null;
         error?: string;
+        details?: string;
       };
 
       if (!response.ok) {
-        throw new Error(payload.error || "Unable to reach chatbot.");
+        throw new Error(payload.error || payload.details || "Unable to reach chatbot.");
       }
 
       const reply = payload.reply?.trim() || "I can help with Paysuit navigation and product questions.";
@@ -82,7 +106,7 @@ export default function ChatbotWidget() {
   return (
     <div className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 sm:bottom-6">
       {isOpen && (
-        <div className="mb-3 flex h-[26rem] w-[min(92vw,24rem)] flex-col rounded-2xl border border-white/10 bg-zinc-950/95 shadow-2xl backdrop-blur">
+        <div className="mb-3 flex h-[30rem] w-[min(92vw,26rem)] flex-col rounded-2xl border border-white/10 bg-zinc-950/95 shadow-2xl backdrop-blur">
           <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 text-white">
             <p className="text-sm font-semibold">Paysuit Assistant</p>
             <button
@@ -93,6 +117,37 @@ export default function ChatbotWidget() {
             >
               <X className="h-4 w-4" />
             </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 border-b border-white/10 p-3">
+            <select
+              value={provider}
+              onChange={(event) => {
+                const selectedProvider = event.target.value as Provider;
+                setProvider(selectedProvider);
+                setModel(MODEL_OPTIONS[selectedProvider][0].value);
+              }}
+              className="h-9 rounded-lg border border-white/15 bg-zinc-900 px-2 text-xs text-white outline-none"
+              aria-label="AI provider"
+            >
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic</option>
+              <option value="gemini">Gemini</option>
+              <option value="openrouter">OpenRouter</option>
+            </select>
+
+            <select
+              value={model}
+              onChange={(event) => setModel(event.target.value)}
+              className="h-9 rounded-lg border border-white/15 bg-zinc-900 px-2 text-xs text-white outline-none"
+              aria-label="Model selection"
+            >
+              {MODEL_OPTIONS[provider].map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="flex-1 space-y-2 overflow-y-auto px-3 py-3 text-sm">
