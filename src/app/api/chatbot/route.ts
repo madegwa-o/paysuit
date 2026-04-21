@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import OpenAI from "openai";
 
 type ChatMessage = {
   role: "user" | "assistant";
@@ -17,13 +18,15 @@ const ALLOWED_ROUTES = [
   "/signin",
 ] as const;
 
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
 export async function POST(req: NextRequest) {
   try {
-    const apiKey = process.env.OPENROUTER_API_KEY;
-
-    if (!apiKey) {
+    if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
-        { error: "OPENROUTER_API_KEY is missing in environment." },
+        { error: "OPENAI_API_KEY is missing in environment." },
         { status: 500 }
       );
     }
@@ -49,35 +52,17 @@ Rules:
 - If no navigation is needed, set navigateTo to null.
 - Never return markdown, only JSON.`;
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "meta-llama/llama-3.3-70b-instruct:free",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...messages.map((message) => ({ role: message.role, content: message.content })),
-        ],
-        temperature: 0.4,
-      }),
+    const completion = await openai.chat.completions.create({
+      model: process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini",
+      temperature: 0.4,
+      messages: [
+        { role: "system", content: systemPrompt },
+        ...messages.map((message) => ({ role: message.role, content: message.content })),
+      ],
+      response_format: { type: "json_object" },
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      return NextResponse.json(
-        { error: "OpenRouter request failed.", details: errorText },
-        { status: 502 }
-      );
-    }
-
-    const data = (await response.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-
-    const content = data.choices?.[0]?.message?.content;
+    const content = completion.choices[0]?.message?.content;
 
     if (!content) {
       return NextResponse.json({ error: "No response content from model." }, { status: 502 });
