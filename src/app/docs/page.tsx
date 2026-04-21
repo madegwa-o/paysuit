@@ -1,6 +1,6 @@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Code2, Package, Send, TerminalSquare } from "lucide-react";
+import { Code2, Package, Send, TerminalSquare, Webhook } from "lucide-react";
 
 const jsInstall = `npm install paysuitjs`;
 
@@ -14,10 +14,32 @@ const directRequestExample = `curl -X POST https://api.paysuit.co.ke/api/v1/stk_
     "amount": "10",
     "receiverBankPaybill": "174379",
     "receiverBankAccountNumber": "INV-2026-001",
-    "transactionDescription": "Starter Plan"
+    "transactionDescription": "Starter Plan",
+    "callbackUrl": "https://yourapp.com/api/payments/webhook"
   }'`;
 
-const sdkExample = `// src/index.ts
+const webhookHandlerExample = `// app/api/payments/webhook/route.ts
+import { NextRequest, NextResponse } from "next/server";
+
+export async function POST(req: NextRequest) {
+  const payload = await req.json();
+
+  // Example callback fields:
+  // payload.result_code, payload.result_description,
+  // payload.CheckoutRequestID, payload.MerchantRequestID, payload.metadata
+
+  if (payload.result_code === 0) {
+    // Mark payment as successful in DB and unlock product/service for user
+    // notifyUser(payload.CheckoutRequestID, "Payment successful ✅");
+  } else {
+    // notifyUser(payload.CheckoutRequestID, "Payment failed ❌");
+  }
+
+  // Always return 200 quickly so webhook retries don't pile up
+  return NextResponse.json({ ok: true });
+}`;
+
+const sdkExample = String.raw`// src/index.ts
 interface MpesaClientConfig {
   baseUrl: string;
   apiKey: string;
@@ -49,7 +71,7 @@ export class MpesaClient {
     if (!config.baseUrl) throw new Error("baseUrl is required");
     if (!config.apiKey) throw new Error("apiKey is required");
 
-    this.baseUrl = config.baseUrl.replace(/\\/$/, "");
+    this.baseUrl = config.baseUrl.replace(/\/$/, "");
     this.apiKey = config.apiKey;
     this.timeout = config.timeout || 30000;
   }
@@ -59,7 +81,7 @@ export class MpesaClient {
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
     try {
-      const response = await fetch(\`${"${this.baseUrl}"}\${"${endpoint}"}\`, {
+      const response = await fetch(this.baseUrl + endpoint, {
         ...options,
         headers: {
           "Content-Type": "application/json",
@@ -73,7 +95,7 @@ export class MpesaClient {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.detail || data.message || \`HTTP \${"${response.status}"}\`);
+        throw new Error(data.detail || data.message || "HTTP " + response.status);
       }
 
       return data as T;
@@ -191,16 +213,22 @@ print(response)`}
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Send className="h-5 w-5 text-primary" />
-              Method 3: Direct API Request
+              Method 3: Direct API Request + Webhook
             </CardTitle>
-            <CardDescription>Use raw HTTP requests from any language/runtime.</CardDescription>
+            <CardDescription>
+              Send raw HTTP requests and receive final payment outcomes on your webhook URL.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <CodeBlock code={directRequestExample} />
-            <p className="text-sm text-muted-foreground">
-              Include your API key in <code>X-API-Key</code>. On success, you receive <code>CheckoutRequestID</code> and
-              can confirm status from your callback endpoint or status API.
-            </p>
+            <Alert>
+              <Webhook className="h-4 w-4" />
+              <AlertDescription>
+                After sending STK Push, the final result should be consumed from your webhook endpoint so you can update
+                your DB and notify the user in real time.
+              </AlertDescription>
+            </Alert>
+            <CodeBlock code={webhookHandlerExample} />
           </CardContent>
         </Card>
 
