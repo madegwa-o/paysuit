@@ -1,209 +1,221 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, MessageSquare, ScanLine, Shield, Activity, FileText } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Code2, Package, Send, TerminalSquare } from "lucide-react";
+
+const jsInstall = `npm install paysuitjs`;
+
+const pythonInstall = `pip install paysuit-py`;
+
+const directRequestExample = `curl -X POST https://api.paysuit.co.ke/api/v1/stk_push \\
+  -H "Content-Type: application/json" \\
+  -H "X-API-Key: <YOUR_API_KEY>" \\
+  -d '{
+    "senderPhoneNumber": "254712345678",
+    "amount": "10",
+    "receiverBankPaybill": "174379",
+    "receiverBankAccountNumber": "INV-2026-001",
+    "transactionDescription": "Starter Plan"
+  }'`;
+
+const sdkExample = `// src/index.ts
+interface MpesaClientConfig {
+  baseUrl: string;
+  apiKey: string;
+  timeout?: number;
+}
+
+interface StkPushRequest {
+  senderPhoneNumber: string;
+  amount: string;
+  receiverBankPaybill?: string | null;
+  receiverBankAccountNumber?: string | null;
+  transactionDescription?: string;
+}
+
+interface StkPushResponse {
+  MerchantRequestID: string;
+  CheckoutRequestID: string;
+  ResponseCode: string;
+  ResponseDescription: string;
+  CustomerMessage: string;
+}
+
+export class MpesaClient {
+  private baseUrl: string;
+  private apiKey: string;
+  private timeout: number;
+
+  constructor(config: MpesaClientConfig) {
+    if (!config.baseUrl) throw new Error("baseUrl is required");
+    if (!config.apiKey) throw new Error("apiKey is required");
+
+    this.baseUrl = config.baseUrl.replace(/\\/$/, "");
+    this.apiKey = config.apiKey;
+    this.timeout = config.timeout || 30000;
+  }
+
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+
+    try {
+      const response = await fetch(\`${"${this.baseUrl}"}\${"${endpoint}"}\`, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": this.apiKey,
+          ...options.headers,
+        },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || data.message || \`HTTP \${"${response.status}"}\`);
+      }
+
+      return data as T;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error("Request timeout");
+      }
+      throw error;
+    }
+  }
+
+  async stkPush(request: StkPushRequest): Promise<StkPushResponse> {
+    return this.request<StkPushResponse>("/api/v1/stk_push", {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
+  }
+}
+
+export function createMpesaClient(config: MpesaClientConfig): MpesaClient {
+  return new MpesaClient(config);
+}`;
+
+function CodeBlock({ code }: { code: string }) {
+  return (
+    <pre className="overflow-x-auto rounded-xl border bg-zinc-950 p-4 text-xs text-zinc-100">
+      <code>{code}</code>
+    </pre>
+  );
+}
 
 export default function DocsPage() {
-    return (
-        <main className="container px-4 py-16 max-w-4xl mx-auto">
-            <div className="mb-12">
-                <h1 className="font-bold text-4xl mb-4">Documentation</h1>
-                <p className="text-muted-foreground text-lg">
-                    Learn how to integrate and use <strong>Malipo</strong> to collect payments securely through M-Pesa.
-                </p>
-            </div>
+  return (
+    <main className="container mx-auto max-w-5xl px-4 py-16">
+      <div className="mb-10 space-y-3">
+        <h1 className="text-4xl font-bold">Paysuit Docs</h1>
+        <p className="text-lg text-muted-foreground">
+          Choose the integration style that matches your stack. You can be live in minutes.
+        </p>
+      </div>
 
-            <Alert className="mb-8 border-primary/50 bg-primary/5">
-                <AlertCircle className="h-4 w-4 text-primary" />
-                <AlertDescription>
-                    <strong>Important:</strong> Malipo is a paywall and payment API provider that connects seamlessly with
-                    M-Pesa. Always test your integrations using the M-Pesa Sandbox before going live with production credentials.
-                </AlertDescription>
-            </Alert>
+      <Alert className="mb-8 border-primary/50 bg-primary/5">
+        <TerminalSquare className="h-4 w-4 text-primary" />
+        <AlertDescription>
+          <strong>Quick start:</strong> If you are in any JavaScript framework, run <code>npm install paysuitjs</code>.
+          If you are in Python, run <code>pip install paysuit-py</code>. Method 3 is direct HTTP request payloads.
+        </AlertDescription>
+      </Alert>
 
-            <div className="space-y-8">
-                <section>
-                    <h2 className="font-bold text-2xl mb-4 flex items-center gap-2">
-                        <Activity className="h-6 w-6 text-primary" />
-                        Getting Started
-                    </h2>
-                    <Card>
-                        <CardContent className="pt-6 space-y-4">
-                            <div>
-                                <h3 className="font-semibold mb-2">What is Malipo?</h3>
-                                <p className="text-muted-foreground text-sm leading-relaxed">
-                                    Malipo is a payment infrastructure designed for developers and businesses that want to
-                                    monetize content or services using M-Pesa. It provides a unified API for initiating STK Pushes,
-                                    handling callbacks, and managing subscription paywalls.
-                                </p>
-                            </div>
-                            <div>
-                                <h3 className="font-semibold mb-2">Setup Guide</h3>
-                                <ol className="list-decimal list-inside space-y-2 text-muted-foreground text-sm">
-                                    <li>Sign up and create your organization on the Malipo dashboard</li>
-                                    <li>Obtain your <strong>Consumer Key</strong> and <strong>Consumer Secret</strong></li>
-                                    <li>Register your <strong>Callback URL</strong></li>
-                                    <li>Use your credentials to initiate a payment request</li>
-                                    <li>Monitor transaction status via webhooks or dashboard</li>
-                                </ol>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </section>
+      <div className="space-y-8">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-primary" />
+              Method 1: JavaScript / TypeScript SDK
+            </CardTitle>
+            <CardDescription>Works with Next.js, React, Node.js, Nuxt, SvelteKit, and more.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <CodeBlock code={jsInstall} />
+            <CodeBlock
+              code={`import { createMpesaClient } from "paysuitjs";
 
-                <section>
-                    <h2 className="font-bold text-2xl mb-4 flex items-center gap-2">
-                        <MessageSquare className="h-6 w-6 text-primary" />
-                        STK Push Requests
-                    </h2>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>How It Works</CardTitle>
-                            <CardDescription>Initiate and handle real-time M-Pesa payment prompts</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div>
-                                <h3 className="font-semibold mb-2">Key Parameters</h3>
-                                <ul className="space-y-2 text-muted-foreground text-sm">
-                                    <li className="flex gap-2">
-                                        <span className="text-primary">•</span>
-                                        <span><strong>PhoneNumber</strong> – The customer’s M-Pesa number (format: 2547XXXXXXXX)</span>
-                                    </li>
-                                    <li className="flex gap-2">
-                                        <span className="text-primary">•</span>
-                                        <span><strong>Amount</strong> – The amount to be charged in KES</span>
-                                    </li>
-                                    <li className="flex gap-2">
-                                        <span className="text-primary">•</span>
-                                        <span><strong>AccountReference</strong> – A short label for your transaction (e.g. &#34;Monthly Plan&#34;)</span>
-                                    </li>
-                                    <li className="flex gap-2">
-                                        <span className="text-primary">•</span>
-                                        <span><strong>CallbackURL</strong> – Endpoint to receive M-Pesa transaction result</span>
-                                    </li>
-                                </ul>
-                            </div>
-                            <div>
-                                <h3 className="font-semibold mb-2">Response Structure</h3>
-                                <ul className="space-y-2 text-muted-foreground text-sm">
-                                    <li className="flex gap-2">
-                                        <span className="text-primary">•</span>
-                                        <span><strong>ResponseCode</strong> – 0 means success (request accepted for processing)</span>
-                                    </li>
-                                    <li className="flex gap-2">
-                                        <span className="text-primary">•</span>
-                                        <span><strong>MerchantRequestID</strong> and <strong>CheckoutRequestID</strong> – Track your transaction</span>
-                                    </li>
-                                    <li className="flex gap-2">
-                                        <span className="text-primary">•</span>
-                                        <span><strong>CustomerMessage</strong> – User-facing message shown on phone (e.g. &#34;Enter your M-Pesa PIN&#34;)</span>
-                                    </li>
-                                </ul>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </section>
+const client = createMpesaClient({
+  baseUrl: "https://api.paysuit.co.ke",
+  apiKey: process.env.PAYSUIT_API_KEY!,
+});
 
-                <section>
-                    <h2 className="font-bold text-2xl mb-4 flex items-center gap-2">
-                        <ScanLine className="h-6 w-6 text-primary" />
-                        Callbacks & Validation
-                    </h2>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Receiving Transaction Results</CardTitle>
-                            <CardDescription>Handle confirmations and validation for your payments</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div>
-                                <h3 className="font-semibold mb-2">Callback Payload</h3>
-                                <ul className="space-y-2 text-muted-foreground text-sm">
-                                    <li className="flex gap-2">
-                                        <span className="text-primary">•</span>
-                                        <span><strong>ResultCode</strong> – 0 (success), any other value means failure</span>
-                                    </li>
-                                    <li className="flex gap-2">
-                                        <span className="text-primary">•</span>
-                                        <span><strong>MpesaReceiptNumber</strong> – The unique transaction ID (e.g. QER5N7R4KL)</span>
-                                    </li>
-                                    <li className="flex gap-2">
-                                        <span className="text-primary">•</span>
-                                        <span><strong>TransactionDate</strong> – Timestamp of successful payment</span>
-                                    </li>
-                                    <li className="flex gap-2">
-                                        <span className="text-primary">•</span>
-                                        <span><strong>Amount</strong> and <strong>PhoneNumber</strong> – Confirm payment details</span>
-                                    </li>
-                                </ul>
-                            </div>
-                            <div>
-                                <h3 className="font-semibold mb-2">Verification Tips</h3>
-                                <ul className="space-y-2 text-muted-foreground text-sm">
-                                    <li className="flex gap-2">
-                                        <span className="text-primary">•</span>
-                                        <span>Always validate <strong>ResultCode</strong> before crediting accounts</span>
-                                    </li>
-                                    <li className="flex gap-2">
-                                        <span className="text-primary">•</span>
-                                        <span>Use <strong>MpesaReceiptNumber</strong> to prevent duplicate processing</span>
-                                    </li>
-                                </ul>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </section>
+const response = await client.stkPush({
+  senderPhoneNumber: "254712345678",
+  amount: "10",
+  receiverBankPaybill: "174379",
+  receiverBankAccountNumber: "INV-2026-001",
+  transactionDescription: "Starter Plan",
+});
 
-                <section>
-                    <h2 className="font-bold text-2xl mb-4 flex items-center gap-2">
-                        <Shield className="h-6 w-6 text-primary" />
-                        Security & Authentication
-                    </h2>
-                    <Card>
-                        <CardContent className="pt-6 space-y-4">
-                            <div>
-                                <h3 className="font-semibold mb-2">Access Tokens</h3>
-                                <p className="text-muted-foreground text-sm leading-relaxed">
-                                    All API requests are authenticated using OAuth 2.0. Use your Consumer Key and Consumer Secret to
-                                    generate a Bearer Token from the M-Pesa Daraja API. The token expires after one hour.
-                                </p>
-                            </div>
-                            <div>
-                                <h3 className="font-semibold mb-2">Certificate Encryption</h3>
-                                <p className="text-muted-foreground text-sm leading-relaxed">
-                                    Malipo automatically encrypts your payloads using the official M-Pesa public certificate. Always ensure
-                                    you are using the correct <strong>ProductionCertificate.cer</strong> or Sandbox certificate for your environment.
-                                </p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </section>
+console.log(response);`}
+            />
+          </CardContent>
+        </Card>
 
-                <section>
-                    <h2 className="font-bold text-2xl mb-4 flex items-center gap-2">
-                        <FileText className="h-6 w-6 text-primary" />
-                        Important Information
-                    </h2>
-                    <Card className="border-destructive/50">
-                        <CardContent className="pt-6 space-y-4">
-                            <div>
-                                <h3 className="font-semibold mb-2 text-destructive">Common Errors</h3>
-                                <ul className="space-y-1 text-muted-foreground text-sm">
-                                    <li className="flex gap-2"><span className="text-destructive">•</span><span><strong>1032:</strong> Invalid credentials</span></li>
-                                    <li className="flex gap-2"><span className="text-destructive">•</span><span><strong>2001:</strong> Insufficient balance</span></li>
-                                    <li className="flex gap-2"><span className="text-destructive">•</span><span><strong>4005:</strong> Request timeout – retry after 5s</span></li>
-                                    <li className="flex gap-2"><span className="text-destructive">•</span><span><strong>9999:</strong> Internal system error – contact support</span></li>
-                                </ul>
-                            </div>
-                            <div>
-                                <h3 className="font-semibold mb-2">Testing & Sandbox</h3>
-                                <p className="text-muted-foreground text-sm leading-relaxed">
-                                    Always test your integration using the M-Pesa Sandbox before moving to production. You can simulate
-                                    transactions, verify callbacks, and confirm your application logic without real money transfers.
-                                </p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </section>
-            </div>
-        </main>
-    )
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Code2 className="h-5 w-5 text-primary" />
+              Method 2: Python SDK
+            </CardTitle>
+            <CardDescription>Great for Django, Flask, FastAPI, and server automation.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <CodeBlock code={pythonInstall} />
+            <CodeBlock
+              code={`from paysuit import MpesaClient
+
+client = MpesaClient(
+    base_url="https://api.paysuit.co.ke",
+    api_key="YOUR_API_KEY"
+)
+
+response = client.stk_push(
+    senderPhoneNumber="254712345678",
+    amount="10",
+    receiverBankPaybill="174379",
+    receiverBankAccountNumber="INV-2026-001",
+    transactionDescription="Starter Plan"
+)
+
+print(response)`}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Send className="h-5 w-5 text-primary" />
+              Method 3: Direct API Request
+            </CardTitle>
+            <CardDescription>Use raw HTTP requests from any language/runtime.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <CodeBlock code={directRequestExample} />
+            <p className="text-sm text-muted-foreground">
+              Include your API key in <code>X-API-Key</code>. On success, you receive <code>CheckoutRequestID</code> and
+              can confirm status from your callback endpoint or status API.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Reference SDK (TypeScript)</CardTitle>
+            <CardDescription>
+              Starter implementation you can adapt if you want your own custom client package.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <CodeBlock code={sdkExample} />
+          </CardContent>
+        </Card>
+      </div>
+    </main>
+  );
 }
