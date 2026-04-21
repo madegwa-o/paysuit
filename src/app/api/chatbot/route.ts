@@ -6,9 +6,9 @@ type ChatMessage = {
   content: string;
 };
 
-type Provider = "openai" | "anthropic" | "gemini" | "openrouter";
+type Provider = "openrouter" | "openai" | "anthropic" | "gemini";
 
-const PROVIDERS: Provider[] = ["openai", "anthropic", "gemini", "openrouter"];
+const PROVIDERS: Provider[] = ["openrouter", "openai", "anthropic", "gemini"];
 
 const ALLOWED_ROUTES = [
   "/",
@@ -39,7 +39,7 @@ Rules:
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, provider = "openai", model } = (await req.json()) as {
+    const { messages, provider = "openrouter", model } = (await req.json()) as {
       messages?: ChatMessage[];
       provider?: Provider;
       model?: string;
@@ -70,19 +70,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No response content from model." }, { status: 502 });
     }
 
-    let parsed: { reply?: string; navigateTo?: string | null } = {};
+    const parsed = parseModelResponse(content);
 
-    try {
-      parsed = JSON.parse(content);
-    } catch {
-      parsed = { reply: content, navigateTo: null };
-    }
+    const inferredRoute = inferRouteFromUserQuery(messages);
 
     const safeRoute =
       parsed.navigateTo &&
       ALLOWED_ROUTES.includes(parsed.navigateTo as (typeof ALLOWED_ROUTES)[number])
         ? parsed.navigateTo
-        : null;
+        : inferredRoute;
 
     return NextResponse.json({
       reply: parsed.reply ?? "I can help with Paysuit features and navigation.",
@@ -119,6 +115,51 @@ function isProviderConfigured(provider: Provider) {
   if (provider === "anthropic") return Boolean(process.env.ANTHROPIC_API_KEY);
   if (provider === "gemini") return Boolean(process.env.GEMINI_API_KEY);
   return Boolean(process.env.OPENROUTER_API_KEY);
+}
+
+function parseModelResponse(rawContent: string) {
+  const cleaned = rawContent.trim();
+
+  const fencedMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = fencedMatch?.[1]?.trim() || cleaned;
+
+  try {
+    const parsed = JSON.parse(candidate) as { reply?: string; navigateTo?: string | null };
+    return {
+      reply: typeof parsed.reply === "string" ? parsed.reply : candidate,
+      navigateTo: typeof parsed.navigateTo === "string" || parsed.navigateTo === null ? parsed.navigateTo : null,
+    };
+  } catch {
+    return { reply: candidate, navigateTo: null as string | null };
+  }
+}
+
+function inferRouteFromUserQuery(messages: ChatMessage[]) {
+  const lastUserMessage = [...messages].reverse().find((message) => message.role === "user")?.content;
+
+  if (!lastUserMessage) return null;
+
+  const query = lastUserMessage.toLowerCase();
+
+  const routeMatchers: Array<{ route: (typeof ALLOWED_ROUTES)[number]; keywords: string[] }> = [
+    { route: "/dashboard", keywords: ["dashboard", "overview", "analytics"] },
+    { route: "/wallet", keywords: ["wallet", "balance", "funds"] },
+    { route: "/transactions", keywords: ["transactions", "history", "payments", "logs"] },
+    { route: "/pricing", keywords: ["pricing", "price", "cost", "plan"] },
+    { route: "/docs", keywords: ["docs", "documentation", "api docs", "guide"] },
+    { route: "/account", keywords: ["account", "profile", "settings"] },
+    { route: "/daraja-tester", keywords: ["daraja", "tester", "stk", "sandbox"] },
+    { route: "/signin", keywords: ["sign in", "login", "log in", "authenticate"] },
+    { route: "/", keywords: ["home", "landing", "main page"] },
+  ];
+
+  for (const matcher of routeMatchers) {
+    if (matcher.keywords.some((keyword) => query.includes(keyword))) {
+      return matcher.route;
+    }
+  }
+
+  return null;
 }
 
 async function generateProviderResponse({
@@ -219,7 +260,7 @@ async function generateProviderResponse({
       ...(process.env.OPENROUTER_SITE_NAME ? { "X-OpenRouter-Title": process.env.OPENROUTER_SITE_NAME } : {}),
     },
     body: JSON.stringify({
-      model: model || process.env.OPENROUTER_CHAT_MODEL || "meta-llama/llama-3.3-70b-instruct:free",
+      model: model || process.env.OPENROUTER_CHAT_MODEL || "deepseek/deepseek-r1",
       temperature: 0.4,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },

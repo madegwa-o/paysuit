@@ -9,7 +9,7 @@ type ChatMessage = {
   content: string;
 };
 
-type Provider = "openai" | "anthropic" | "gemini" | "openrouter";
+type Provider = "openrouter" | "openai" | "anthropic" | "gemini";
 
 const STARTER_MESSAGE: ChatMessage = {
   role: "assistant",
@@ -31,8 +31,8 @@ const MODEL_OPTIONS: Record<Provider, Array<{ label: string; value: string }>> =
     { label: "Gemini 1.5 Flash", value: "gemini-1.5-flash" },
   ],
   openrouter: [
-    { label: "Llama 3.3 70B (free)", value: "meta-llama/llama-3.3-70b-instruct:free" },
     { label: "DeepSeek R1", value: "deepseek/deepseek-r1" },
+    { label: "Llama 3.3 70B (free)", value: "meta-llama/llama-3.3-70b-instruct:free" },
   ],
 };
 
@@ -42,8 +42,8 @@ export default function ChatbotWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [input, setInput] = useState("");
-  const [provider, setProvider] = useState<Provider>("openai");
-  const [model, setModel] = useState(MODEL_OPTIONS.openai[0].value);
+  const [provider, setProvider] = useState<Provider>("openrouter");
+  const [model, setModel] = useState("deepseek/deepseek-r1");
   const [messages, setMessages] = useState<ChatMessage[]>([STARTER_MESSAGE]);
 
   const visibleMessages = useMemo(
@@ -135,10 +135,10 @@ export default function ChatbotWidget() {
               className="h-9 rounded-lg border border-white/15 bg-zinc-900 px-2 text-xs text-white outline-none"
               aria-label="AI provider"
             >
+              <option value="openrouter">OpenRouter</option>
               <option value="openai">OpenAI</option>
               <option value="anthropic">Anthropic</option>
               <option value="gemini">Gemini</option>
-              <option value="openrouter">OpenRouter</option>
             </select>
 
             <select
