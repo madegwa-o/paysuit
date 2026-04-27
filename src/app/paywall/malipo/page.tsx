@@ -61,7 +61,9 @@ export default function MalipoGatewayPage() {
     <main className="container px-4 py-8 max-w-4xl mx-auto space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Malipo Gateway (C2B + B2C)</h1>
-        <p className="text-muted-foreground mt-2">C2B is free to use. B2C includes a payout fee based on your amount tier.</p>
+        <p className="text-muted-foreground mt-2">
+          C2B is free to use. B2C includes a payout fee based on your amount tier. Requests are tied to the logged-in user.
+        </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

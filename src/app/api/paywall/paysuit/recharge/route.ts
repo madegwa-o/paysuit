@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { connectToDatabase } from "@/lib/db"
+import { Payment } from "@/models/Payment"
+import { User } from "@/models/User"
 
 const MPESA_BASE_URL = process.env.DARAJA_BASE_URL || "https://api.safaricom.co.ke"
 
@@ -29,6 +33,11 @@ async function getAccessToken(consumerKey: string, consumerSecret: string) {
 }
 
 export async function POST(req: NextRequest) {
+  const session = await getServerSession()
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
   const { phoneNumber, amount } = await req.json()
 
   const formattedPhone = normalizePhone(String(phoneNumber || ""))
@@ -49,6 +58,12 @@ export async function POST(req: NextRequest) {
 
   if (!consumerKey || !consumerSecret || !shortCode || !passkey) {
     return NextResponse.json({ error: "Paysuit C2B credentials are not configured on the server." }, { status: 500 })
+  }
+
+  await connectToDatabase()
+  const dbUser = await User.findOne({ email: session.user.email })
+  if (!dbUser) {
+    return NextResponse.json({ error: "User account not found." }, { status: 404 })
   }
 
   try {
@@ -77,11 +92,26 @@ export async function POST(req: NextRequest) {
         PhoneNumber: formattedPhone,
         CallBackURL: `${process.env.CALLBACK_BASE_URL || "http://localhost:3000"}/api/mpesa/stkpush/callback`,
         AccountReference: "PAYSUITTOPUP",
-        TransactionDesc: "Wallet topup",
+        TransactionDesc: `Topup-${String(dbUser._id).slice(-6)}`.slice(0, 13),
       }),
     })
 
     const data = await stkResponse.json()
+
+    await Payment.create({
+      userId: dbUser._id,
+      provider: "PAYSUIT",
+      flow: "PAYSUIT_RECHARGE",
+      phoneNumber: formattedPhone,
+      amount: Math.trunc(parsedAmount),
+      fee: 0,
+      status: stkResponse.ok ? "PENDING" : "FAILED",
+      merchantRequestID: data?.MerchantRequestID,
+      checkoutRequestID: data?.CheckoutRequestID,
+      resultDesc: data?.ResponseDescription || data?.errorMessage,
+      rawResponse: data,
+    })
+
     return NextResponse.json(data, { status: stkResponse.status })
   } catch (error) {
     console.error("Paysuit recharge STK error", error)
