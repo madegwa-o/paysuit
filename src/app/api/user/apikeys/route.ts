@@ -7,7 +7,7 @@ import { User } from "@/models/User";
 import { generateApiKey } from "@/lib/apikey-utils";
 
 // GET - Fetch all API keys for the current user
-export async function GET(req: NextRequest) {
+export async function GET() {
     try {
         const session = await getServerSession();
 
@@ -72,6 +72,15 @@ export async function POST(req: NextRequest) {
             return NextResponse.json(
                 { error: "User not found" },
                 { status: 404 }
+            );
+        }
+
+
+        const existingCount = await ApiKey.countDocuments({ userId: user._id, isActive: true });
+        if (existingCount >= 1) {
+            return NextResponse.json(
+                { error: "Only one API key is allowed. Delete the existing key before creating a new one." },
+                { status: 400 }
             );
         }
 

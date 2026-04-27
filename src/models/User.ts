@@ -26,6 +26,7 @@ export interface IUser extends Document {
 	roles: Role[];
 	accountType: AccountType;
 	walletBalance: number;
+	accountBalance: number;
 	isActive: boolean;
 	lastLogin?: Date;
 	darajaCredentials?: {
@@ -109,6 +110,11 @@ const UserSchema = new Schema<IUser>(
 			index: true,
 		},
 		walletBalance: {
+			type: Number,
+			default: 0,
+			min: 0,
+		},
+		accountBalance: {
 			type: Number,
 			default: 0,
 			min: 0,
