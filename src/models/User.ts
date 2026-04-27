@@ -25,6 +25,7 @@ export interface IUser extends Document {
 	address?: string;
 	roles: Role[];
 	accountType: AccountType;
+	walletBalance: number;
 	isActive: boolean;
 	lastLogin?: Date;
 	darajaCredentials?: {
@@ -106,6 +107,11 @@ const UserSchema = new Schema<IUser>(
 			enum: Object.values(AccountType),
 			default: AccountType.FREEMIUM,
 			index: true,
+		},
+		walletBalance: {
+			type: Number,
+			default: 0,
+			min: 0,
 		},
 		isActive: {
 			type: Boolean,
