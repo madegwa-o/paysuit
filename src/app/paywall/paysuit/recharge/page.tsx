@@ -1,0 +1,77 @@
+"use client"
+
+import { useState } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
+
+export default function PaysuitRechargePage() {
+  const [phoneNumber, setPhoneNumber] = useState("")
+  const [amount, setAmount] = useState("10")
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState("")
+
+  const handleRecharge = async () => {
+    setLoading(true)
+    setMessage("")
+
+    try {
+      const response = await fetch("/api/paywall/paysuit/recharge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber, amount: Number(amount) }),
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        setMessage(data.error || data.errorMessage || "Recharge request failed")
+        return
+      }
+
+      setMessage(data.CustomerMessage || data.ResponseDescription || "STK push sent. Please approve on your phone.")
+    } catch {
+      setMessage("Unable to send recharge request.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <main className="container px-4 py-8 max-w-3xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">Paysuit Wallet Recharge</h1>
+        <p className="text-muted-foreground mt-2">Enter a Safaricom number and amount to trigger an STK push.</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Recharge via STK Push</CardTitle>
+          <CardDescription>Accepted formats: 07XXXXXXXX, 7XXXXXXXX, +2547XXXXXXXX, or 2547XXXXXXXX.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="phone">Phone Number</Label>
+            <Input
+              id="phone"
+              placeholder="07XXXXXXXX / +2547XXXXXXXX"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="amount">Amount (KES)</Label>
+            <Input id="amount" type="number" min={1} value={amount} onChange={(e) => setAmount(e.target.value)} />
+          </div>
+
+          <Button onClick={handleRecharge} disabled={loading}>
+            {loading ? "Sending..." : "Recharge with STK Push"}
+          </Button>
+
+          {message && <p className="text-sm text-muted-foreground">{message}</p>}
+        </CardContent>
+      </Card>
+    </main>
+  )
+}

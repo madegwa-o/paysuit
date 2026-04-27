@@ -9,9 +9,10 @@ const MPESA_BASE_URL = process.env.DARAJA_BASE_URL || "https://api.safaricom.co.
 const timestamp = () => new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14)
 
 const normalizePhone = (phone: string) => {
-  const trimmed = phone.replace(/\s+/g, "")
+  const trimmed = phone.replace(/[\s-]+/g, "").replace(/^\+/, "")
   if (/^2547\d{8}$/.test(trimmed)) return trimmed
   if (/^07\d{8}$/.test(trimmed)) return `254${trimmed.slice(1)}`
+  if (/^7\d{8}$/.test(trimmed)) return `254${trimmed}`
   return null
 }
 
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
   const parsedAmount = Number(amount)
 
   if (!formattedPhone) {
-    return NextResponse.json({ error: "Use a valid Safaricom number (07XXXXXXXX or 2547XXXXXXXX)." }, { status: 400 })
+    return NextResponse.json({ error: "Use a valid Safaricom number (07XXXXXXXX, 7XXXXXXXX, +2547XXXXXXXX, or 2547XXXXXXXX)." }, { status: 400 })
   }
 
   if (!Number.isFinite(parsedAmount) || parsedAmount < 1) {
