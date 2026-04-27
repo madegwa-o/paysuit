@@ -47,6 +47,7 @@ export function Header() {
         { label: "Transactions", href: "/transactions" },
         { label: "Pricing", href: "/pricing" },
         { label: "Docs", href: "/docs" },
+        { label: "Paywall", href: "/paywall" },
         { label: "My Account", href: "/account" },
     ]
 
