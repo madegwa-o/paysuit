@@ -6,7 +6,7 @@ export async function GET() {
     const pages = [
         "",
         "/daraja-tester",
-        "/wallet",
+        "/directpaywall",
         "/transactions",
         "/pricing",
         "/history",

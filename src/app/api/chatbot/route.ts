@@ -13,7 +13,7 @@ const PROVIDERS: Provider[] = ["openrouter", "openai", "anthropic", "gemini"];
 const ALLOWED_ROUTES = [
   "/",
   "/dashboard",
-  "/wallet",
+  "/directpaywall",
   "/transactions",
   "/pricing",
   "/docs",
@@ -143,7 +143,7 @@ function inferRouteFromUserQuery(messages: ChatMessage[]) {
 
   const routeMatchers: Array<{ route: (typeof ALLOWED_ROUTES)[number]; keywords: string[] }> = [
     { route: "/dashboard", keywords: ["dashboard", "overview", "analytics"] },
-    { route: "/wallet", keywords: ["wallet", "balance", "funds"] },
+    { route: "/directpaywall", keywords: ["directpaywall", "balance", "funds"] },
     { route: "/transactions", keywords: ["transactions", "history", "payments", "logs"] },
     { route: "/pricing", keywords: ["pricing", "price", "cost", "plan"] },
     { route: "/docs", keywords: ["docs", "documentation", "api docs", "guide"] },

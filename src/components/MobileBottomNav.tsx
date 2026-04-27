@@ -12,8 +12,8 @@ export default function MobileBottomNav() {
 
     const tabs = [
         {
-            href: "/wallet",
-            icon: Wallet2, // Represents your M-Pesa wallet
+            href: "/directpaywall",
+            icon: Wallet2, // Represents your M-Pesa directpaywall
             label: "Wallet",
         },
         {

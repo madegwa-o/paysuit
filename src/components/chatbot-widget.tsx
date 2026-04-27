@@ -14,7 +14,7 @@ type Provider = "openrouter" | "openai" | "anthropic" | "gemini";
 const STARTER_MESSAGE: ChatMessage = {
   role: "assistant",
   content:
-    "Hi! I can answer Paysuit questions and navigate you to pages like dashboard, wallet, transactions, pricing, docs, or account.",
+    "Hi! I can answer Paysuit questions and navigate you to pages like dashboard, directpaywall, transactions, pricing, docs, or account.",
 };
 
 const MODEL_OPTIONS: Record<Provider, Array<{ label: string; value: string }>> = {
