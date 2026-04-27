@@ -69,9 +69,16 @@ export async function POST(req: NextRequest) {
     if (merchantRequestID) payment.merchantRequestID = merchantRequestID
     await payment.save()
 
-    if (!wasSuccessful && resultCode === 0 && payment.flow === "PAYSUIT_RECHARGE") {
+    if (!wasSuccessful && resultCode === 0) {
       const amountFromCallback = Number(getMetadataValue(callback.CallbackMetadata?.Item, "Amount") || payment.amount)
-      await User.updateOne({ _id: payment.userId }, { $inc: { walletBalance: amountFromCallback } })
+
+      if (payment.flow === "PAYSUIT_RECHARGE") {
+        await User.updateOne({ _id: payment.userId }, { $inc: { walletBalance: amountFromCallback } })
+      }
+
+      if (payment.flow === "MALIPO_C2B") {
+        await User.updateOne({ _id: payment.userId }, { $inc: { accountBalance: amountFromCallback } })
+      }
     }
   } catch (error) {
     console.error("STK callback processing error:", error)

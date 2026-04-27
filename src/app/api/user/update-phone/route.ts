@@ -19,6 +19,8 @@ export async function GET() {
             throw new Error('User not found');
         }
 
+        await connectToDatabase();
+
         const user = await User.findOne({email: session?.user?.email}).lean<UserData | null>();
 
         return NextResponse.json({

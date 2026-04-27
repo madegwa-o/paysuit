@@ -55,10 +55,6 @@ export default function ApiKeysManager() {
     const [copiedKey, setCopiedKey] = useState(false);
     const [showKey, setShowKey] = useState(false);
 
-    useEffect(() => {
-        fetchApiKeys();
-    }, []);
-
     const fetchApiKeys = async () => {
         try {
             const res = await fetch("/api/user/apikeys");
@@ -72,6 +68,14 @@ export default function ApiKeysManager() {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        const id = setTimeout(() => {
+            void fetchApiKeys();
+        }, 0);
+
+        return () => clearTimeout(id);
+    }, []);
 
     const handleCreateKey = async () => {
         if (!newKeyLabel.trim()) return;
@@ -143,13 +147,13 @@ export default function ApiKeysManager() {
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">
-                    Create API keys to integrate with external applications
+                    Create one API key for all paywall integrations
                 </p>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button size="sm">
+                        <Button size="sm" disabled={apiKeys.length >= 1}>
                             <Plus className="h-4 w-4 mr-2" />
-                            Create Key
+                            Generate API Key
                         </Button>
                     </DialogTrigger>
                     <DialogContent>
@@ -226,6 +230,14 @@ export default function ApiKeysManager() {
                                 I&#39;ve saved my key
                             </Button>
                         </div>
+                    </AlertDescription>
+                </Alert>
+            )}
+
+            {apiKeys.length >= 1 && (
+                <Alert>
+                    <AlertDescription>
+                        You can only have one active API key. Delete it first if you need to generate a new one.
                     </AlertDescription>
                 </Alert>
             )}
