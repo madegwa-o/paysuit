@@ -5,9 +5,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { History, KeyRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import React, { useEffect, useMemo, useState } from "react"
+import { useSession } from "next-auth/react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { calculatePaywallFee } from "@/lib/paywall-fees"
+import { initiateStkPush, isBasicPhoneNumber } from "@/lib/payment-server"
+import { usePaymentWebSocket } from "@/hooks/usePaymentWebSocket"
 
 type PaymentRecord = {
   _id: string
@@ -29,6 +32,17 @@ export default function Wallet() {
   const [walletBalance, setWalletBalance] = useState<number | null>(null)
   const [payments, setPayments] = useState<PaymentRecord[]>([])
   const [apiKeys, setApiKeys] = useState<ApiKeyData[]>([])
+  const { data: session } = useSession()
+  const paymentWebSocket = usePaymentWebSocket({
+    onAccepted: () => setMessage("STK prompt sent to your phone"),
+    onSucceeded: (receipt) => {
+      setMessage(`Payment succeeded. Receipt: ${receipt.mpesaReceiptNumber || "pending"}. Amount: KES ${receipt.amount ?? Number(amount || 0)}${receipt.transactionDate ? ` · ${receipt.transactionDate}` : ""}`)
+      void loadAccountData()
+    },
+    onFailed: (resultDesc) => setMessage(`Payment failed: ${resultDesc}`),
+    onTimeout: () => setMessage("Payment timed out. Please check your M-Pesa messages before starting a new request."),
+    onOutage: (status) => setMessage(status),
+  })
 
   const fee = useMemo(() => calculatePaywallFee(Number(amount || 0)), [amount])
 
@@ -65,23 +79,32 @@ export default function Wallet() {
     setLoading(true)
     setMessage("")
 
+    const parsedAmount = Number(amount)
+    if (!isBasicPhoneNumber(phoneNumber) || !Number.isFinite(parsedAmount) || parsedAmount < 1) {
+      setMessage("Enter a valid Safaricom phone number and amount before sending STK Push.")
+      setLoading(false)
+      return
+    }
+
     try {
-      const response = await fetch("/api/paywall/paysuit/recharge", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumber, amount: Number(amount) }),
+      const clientRequestId = crypto.randomUUID()
+      const websocketSessionId = await paymentWebSocket.connectAndSubscribe(clientRequestId)
+      const data = await initiateStkPush({
+        flow: "PAYSUIT_RECHARGE",
+        provider: "PAYSUIT",
+        userId: session?.user?.id || session?.user?.email || "",
+        phoneNumber,
+        amount: parsedAmount,
+        currency: "KES",
+        clientRequestId,
+        websocketSessionId,
       })
 
-      const data = await response.json()
-      if (!response.ok) {
-        setMessage(data.error || data.errorMessage || "Recharge request failed")
-        return
-      }
-
-      setMessage(data.CustomerMessage || data.ResponseDescription || "STK push sent. Please approve on your phone.")
-      void loadAccountData()
-    } catch {
-      setMessage("Unable to send recharge request.")
+      paymentWebSocket.upgradeSubscription(data.paymentId, data.checkoutRequestID || data.CheckoutRequestID)
+      setMessage(data.CustomerMessage || data.ResponseDescription || "STK prompt sent to your phone")
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to send recharge request.")
+      paymentWebSocket.close()
     } finally {
       setLoading(false)
     }
