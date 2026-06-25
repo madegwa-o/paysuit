@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useMemo, useState } from "react"
+import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -8,6 +9,8 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { History, KeyRound } from "lucide-react"
 import { calculatePaywallFee } from "@/lib/paywall-fees"
+import { initiateStkPush, isBasicPhoneNumber } from "@/lib/payment-server"
+import { usePaymentWebSocket } from "@/hooks/usePaymentWebSocket"
 
 type PaymentRecord = {
   _id: string
@@ -29,6 +32,17 @@ export default function ManagedPaywallPage() {
   const [accountBalance, setAccountBalance] = useState<number | null>(null)
   const [transactions, setTransactions] = useState<PaymentRecord[]>([])
   const [apiKeys, setApiKeys] = useState<ApiKeyData[]>([])
+  const { data: session } = useSession()
+  const paymentWebSocket = usePaymentWebSocket({
+    onAccepted: () => setC2bMessage("STK prompt sent to your phone"),
+    onSucceeded: (receipt) => {
+      setC2bMessage(`Payment succeeded. Receipt: ${receipt.mpesaReceiptNumber || "pending"}. Amount: KES ${receipt.amount ?? Number(c2bAmount || 0)}${receipt.transactionDate ? ` · ${receipt.transactionDate}` : ""}`)
+      void loadData()
+    },
+    onFailed: (resultDesc) => setC2bMessage(`Payment failed: ${resultDesc}`),
+    onTimeout: () => setC2bMessage("Payment timed out. Please check your M-Pesa messages before starting a new request."),
+    onOutage: (status) => setC2bMessage(status),
+  })
 
   const [b2cAmount, setB2cAmount] = useState("20")
   const fee = useMemo(() => calculatePaywallFee(Number(b2cAmount || 0)), [b2cAmount])
@@ -67,23 +81,32 @@ export default function ManagedPaywallPage() {
     setC2bLoading(true)
     setC2bMessage("")
 
+    const parsedAmount = Number(c2bAmount)
+    if (!isBasicPhoneNumber(c2bPhone) || !Number.isFinite(parsedAmount) || parsedAmount < 1) {
+      setC2bMessage("Enter a valid Safaricom phone number and amount before sending STK Push.")
+      setC2bLoading(false)
+      return
+    }
+
     try {
-      const response = await fetch("/api/paywall/malipo/stk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumber: c2bPhone, amount: Number(c2bAmount) }),
+      const clientRequestId = crypto.randomUUID()
+      const websocketSessionId = await paymentWebSocket.connectAndSubscribe(clientRequestId)
+      const data = await initiateStkPush({
+        flow: "MALIPO_C2B",
+        provider: "MALIPO",
+        userId: session?.user?.id || session?.user?.email || "",
+        phoneNumber: c2bPhone,
+        amount: parsedAmount,
+        currency: "KES",
+        clientRequestId,
+        websocketSessionId,
       })
 
-      const data = await response.json()
-      if (!response.ok) {
-        setC2bMessage(data.error || data.errorMessage || "Managed STK request failed")
-        return
-      }
-
-      setC2bMessage(data.CustomerMessage || data.ResponseDescription || "STK push sent. Please approve on your phone.")
-      void loadData()
-    } catch {
-      setC2bMessage("Unable to initiate managed STK payment.")
+      paymentWebSocket.upgradeSubscription(data.paymentId, data.checkoutRequestID || data.CheckoutRequestID)
+      setC2bMessage(data.CustomerMessage || data.ResponseDescription || "STK prompt sent to your phone")
+    } catch (error) {
+      setC2bMessage(error instanceof Error ? error.message : "Unable to initiate managed STK payment.")
+      paymentWebSocket.close()
     } finally {
       setC2bLoading(false)
     }
