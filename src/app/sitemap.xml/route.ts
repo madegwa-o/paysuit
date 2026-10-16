@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
+import { SITE_URL } from "@/lib/site";
 
 export async function GET() {
-    const baseUrl = "https://paysuit.aistartupclub.com";
-
     const pages = [
         "",
         "/daraja-tester",
@@ -19,7 +18,7 @@ export async function GET() {
         .map(
             (page) => `
   <url>
-    <loc>${baseUrl}${page}</loc>
+    <loc>${SITE_URL}${page}</loc>
     <lastmod>${new Date().toISOString()}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>${page === "" ? "1.0" : "0.7"}</priority>
@@ -28,15 +27,11 @@ export async function GET() {
         .join("");
 
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset
-  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls}
 </urlset>`;
 
     return new NextResponse(xml, {
-        headers: {
-            "Content-Type": "application/xml",
-        },
+        headers: { "Content-Type": "application/xml" },
     });
 }

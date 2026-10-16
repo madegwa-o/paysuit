@@ -13,6 +13,8 @@ import InstallPrompt from "@/components/InstallPrompt";
 import AuthErrorHandlerWrapper from "@/components/auth-error-handler-wrapper";
 import { NotificationDisplay } from "@/components/notifications/notification-display";
 import ChatbotWidget from "@/components/chatbot-widget";
+import { SITE_URL } from "@/lib/site";
+
 
 // -----------------
 // Font Configuration
@@ -45,7 +47,7 @@ export const viewport: Viewport = {
 // Metadata
 // -----------------
 export const metadata: Metadata = {
-    metadataBase: new URL("https://paysuit.aistartupclub.com"),
+    metadataBase: new URL(SITE_URL),
 
     title: {
         default: "Paysuit — M-Pesa Payments for Developers",
@@ -101,18 +103,18 @@ export const metadata: Metadata = {
 
     openGraph: {
         type: "website",
-        url: "https://paysuit.aistartupclub.com",
+        url: SITE_URL,
         title: "Paysuit — M-Pesa Payments for Developers",
         description:
             "The fastest way to integrate M-Pesa payments. Clean APIs, instant settlement, built for developers.",
         siteName: "Paysuit",
         images: [
             {
-                url: "https://paysuit.aistartupclub.com/og-image.png",
+                url: `${SITE_URL}/og-image.png`,
                 width: 1200,
                 height: 630,
-                alt: "Paysuit — M-Pesa Payments for Developers"
-            }
+                alt: "Paysuit — M-Pesa Payments for Developers",
+            },
         ],
     },
 
@@ -121,14 +123,15 @@ export const metadata: Metadata = {
         title: "Paysuit — M-Pesa Payments for Developers",
         description:
             "Integrate M-Pesa payments in minutes using clean APIs and modern SDKs.",
-        images: ["https://paysuit.aistartupclub.com/og-image.png"],
-        creator: "@paysuit"
+        images: [`${SITE_URL}/og-image.png`],
+        creator: "@paysuit",
+    },
+
+    alternates: {
+        canonical: "/",
     },
 
     category: "finance",
-    alternates: {
-        canonical: "https://paysuit.aistartupclub.com/"
-    },
 
     appleWebApp: {
         capable: true,
@@ -180,12 +183,12 @@ export default function RootLayout({
                     operatingSystem: "Web",
                     description:
                         "Developer-first M-Pesa payments API. Integrate mobile money instantly using secure, modern SDKs.",
-                    url: "https://paysuit.aistartupclub.com",
+                    url: SITE_URL,
                     creator: {
                         "@type": "Organization",
                         name: "Paysuit Fintech",
-                        url: "https://paysuit.aistartupclub.com"
-                    }
+                        url: SITE_URL,
+                    },
                 }),
             }}
         />

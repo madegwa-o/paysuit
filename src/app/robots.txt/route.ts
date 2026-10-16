@@ -1,16 +1,14 @@
 import { NextResponse } from "next/server";
+import { SITE_URL } from "@/lib/site";
 
 export async function GET() {
-    const body = `
-User-agent: *
+    const body = `User-agent: *
 Allow: /
 
-Sitemap: https://paysuit.aistartupclub.com/sitemap.xml
+Sitemap: ${SITE_URL}/sitemap.xml
 `;
 
     return new NextResponse(body, {
-        headers: {
-            "Content-Type": "text/plain",
-        },
+        headers: { "Content-Type": "text/plain" },
     });
 }
