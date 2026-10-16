@@ -18,6 +18,7 @@ const PUBLIC_ROUTES = [
     "/api/auth/login",
     "/api/auth/complete-profile",
     "/api/auth/forgot-password",
+    "/api/auth/callback/credentials",
 
     "/daraja-tester",
 
