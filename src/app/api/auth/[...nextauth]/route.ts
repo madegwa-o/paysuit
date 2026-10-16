@@ -1,130 +1,227 @@
-import NextAuth, { type DefaultSession } from "next-auth"
-import GoogleProvider from "next-auth/providers/google"
-import CredentialsProvider from "next-auth/providers/credentials"
-import { addOrUpdateUser, getUserByEmail } from "@/lib/users"
-import { Role } from "@/models/User"
+import NextAuth, {DefaultSession, NextAuthOptions, Session} from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
+import { User } from "@/models";
+import { connectToDatabase } from "@/lib/db";
+import type { JWT } from "next-auth/jwt";
 
-// Extend NextAuth types to include roles
+import crypto from "crypto";
+
+
+
+// Extend NextAuth types to include username
 declare module "next-auth" {
     interface Session {
         user: {
             id?: string | null
+            username?: string | null
             roles?: string[]
+            profileCompleted?: boolean
         } & DefaultSession["user"]
     }
-
     interface User {
         id: string
+        username?: string
         roles?: string[]
+        profileCompleted?: boolean
     }
 }
 
 declare module "next-auth/jwt" {
     interface JWT {
         userId?: string
+        username?: string
         roles?: string[]
+        profileCompleted?: boolean
     }
 }
 
-const handler = NextAuth({
+// Generates a random, guaranteed-unique username for OAuth signups
+async function generateUniqueUsername(): Promise<string> {
+    const MAX_ATTEMPTS = 5;
+
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        // e.g. "user_9f2a7c1b3e" - random hex, unlikely to collide, no PII
+        const candidate = `user_${crypto.randomBytes(6).toString("hex")}`;
+
+        const existing = await User.findOne({ username: candidate });
+        if (!existing) {
+            return candidate;
+        }
+    }
+
+    // Extremely unlikely fallback: timestamp + random suffix guarantees uniqueness
+    return `user_${Date.now().toString(36)}${crypto.randomBytes(3).toString("hex")}`;
+}
+
+
+export const authOptions: NextAuthOptions = {
     providers: [
-        GoogleProvider({
-            clientId: process.env.GOOGLE_CLIENT_ID!,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-        }),
+        // Email/Password Provider
         CredentialsProvider({
             name: "Credentials",
             credentials: {
-                email: { label: "Email", type: "email" },
+                identifier: { label: "Email or Username", type: "text" },
                 password: { label: "Password", type: "password" },
             },
             async authorize(credentials) {
-                if (!credentials?.email || !credentials?.password) {
-                    return null
+                if (!credentials?.identifier || !credentials?.password) {
+                    throw new Error("Email/username and password are required");
                 }
 
                 try {
-                    const user = await getUserByEmail(credentials.email)
-                    if (!user || !user.password) {
-                        return null
+                    await connectToDatabase();
+
+                    // Find user by email or username
+                    const user = await User.findOne({
+                        $or: [
+                            { email: credentials.identifier.toLowerCase() },
+                            { username: credentials.identifier.toLowerCase() }
+                        ]
+                    }).select("+password");
+
+                    if (!user) {
+                        throw new Error("Invalid email, username, or password");
                     }
 
-                    const isValid = await user.comparePassword(credentials.password)
-                    if (!isValid) {
-                        return null
+                    // Check if email is verified
+                    if (!user.emailVerified) {
+                        throw new Error("Please verify your email before logging in");
                     }
+
+                    // Compare password
+                    const isPasswordValid = await user.comparePassword(credentials.password);
+                    if (!isPasswordValid) {
+                        throw new Error("Invalid email, username, or password");
+                    }
+
+                    // Update last login
+                    user.lastLogin = new Date();
+                    await user.save();
 
                     return {
                         id: user._id.toString(),
                         email: user.email,
                         name: user.name,
                         image: user.image,
-                        roles: user.roles,
-                    }
-                } catch (error) {
-                    console.error("Authorization error:", error)
-                    return null
+                        username: user.username,
+                        profileCompleted: user.profileCompleted ?? false,
+                    };
+                } catch (error: unknown) {
+                    const message = error instanceof Error ? error.message : "Authentication failed";
+                    throw new Error(message);
                 }
             },
         }),
+
+        // Google Provider
+        GoogleProvider({
+            clientId: process.env.GOOGLE_CLIENT_ID || "",
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+            allowDangerousEmailAccountLinking: true,
+        }),
     ],
-    secret: process.env.NEXTAUTH_SECRET,
+
     callbacks: {
+        // Handle JWT token creation/update
+        async jwt({ token, user, account }) {
+            if (user) {
+                token.id = user.id;
+                token.email = user.email;
+                token.username = user.username;
+                token.roles = user.roles;
+                token.profileCompleted = user.profileCompleted;
+            }
+
+            if (account?.provider === "google" && user) {
+                try {
+                    await connectToDatabase();
+                    let dbUser = await User.findOne({ email: user.email });
+
+                    if (!dbUser) {
+                        const username = await generateUniqueUsername();
+                        dbUser = await User.create({
+                            googleId: user.id,
+                            email: user.email,
+                            name: user.name,
+                            image: user.image,
+                            username: username,
+                            authProvider: "google",
+                            emailVerified: true,
+                            profileCompleted: false,
+                        });
+                    } else if (!dbUser.googleId) {
+                        dbUser.googleId = user.id;
+                        dbUser.authProvider = "google";
+                        dbUser.image = user.image || dbUser.image;
+                        await dbUser.save();
+                    }
+
+                    token.id = dbUser._id.toString();
+                    token.username = dbUser.username;
+                    token.roles = dbUser.roles;
+                    token.profileCompleted = dbUser.profileCompleted;
+                } catch (error) {
+                    console.error("Google OAuth callback error:", error);
+                }
+            }
+
+            return token;
+        },
+
+        // Update session with token data
+        async session({ session, token }: { session: Session; token: JWT }) {
+            if (session.user) {
+                session.user.id = token.id as string;
+                session.user.username = token.username as string;
+                session.user.roles = token.roles as string[];
+                session.user.profileCompleted = token.profileCompleted as boolean;
+            }
+            return session;
+        },
+
+        // Handle sign-in event
         async signIn({ user, account }) {
             try {
-                if (account?.provider === "google" && user.email && user.name) {
-                    await addOrUpdateUser({
-                        name: user.name,
-                        email: user.email,
-                        image: user.image ?? undefined,
-                        roles: [Role.USER],
-                    })
-                }
-                return true
-            } catch (error) {
-                console.error("Sign in error:", error)
-                return false
-            }
-        },
-        async jwt({ token, user, trigger }) {
-            if (user?.email || trigger === "update") {
-                try {
-                    const email = user?.email || token.email
-                    if (email) {
-                        const existingUser = await getUserByEmail(email)
-                        if (existingUser) {
-                            token.roles = existingUser.roles || [Role.USER]
-                            token.userId = existingUser._id.toString()
-                            token.name = existingUser.name
-                            token.picture = existingUser.image
-                        }
-                    }
-                } catch (error) {
-                    console.error("JWT callback error:", error)
-                }
-            }
-            return token
-        },
-        async session({ session, token }) {
-            try {
-                if (token?.userId) {
-                    session.user.id = token.userId
-                    session.user.roles = (token.roles as string[]) || [Role.USER]
-                    session.user.name = token.name
-                    session.user.image = token.picture
-                }
-                return session
-            } catch (error) {
-                console.error("Session callback error:", error)
-                return session
-            }
-        },
-    },
-    pages: {
-        signIn: "/signin",
-        error: "/signin",
-    },
-    debug: process.env.NODE_ENV === "development",
-})
+                await connectToDatabase();
 
-export { handler as GET, handler as POST }
+                if (account?.provider === "credentials") {
+                    // Credentials provider: already verified in authorize callback
+                    return true;
+                }
+
+                if (account?.provider === "google") {
+                    // Google provider: always allow (user created/updated in JWT callback)
+                    return true;
+                }
+
+                return false;
+            } catch (error) {
+                console.error("SignIn callback error:", error);
+                return false;
+            }
+        },
+    },
+
+    pages: {
+        signIn: "/auth/login",
+        error: "/auth/error",
+    },
+
+    session: {
+        strategy: "jwt",
+        maxAge: 30 * 24 * 60 * 60, // 30 days
+    },
+
+    jwt: {
+        maxAge: 30 * 24 * 60 * 60, // 30 days
+    },
+
+    secret: process.env.NEXTAUTH_SECRET,
+
+    debug: process.env.NODE_ENV === "development",
+};
+
+
+const handler = NextAuth(authOptions);
+export { handler as GET, handler as POST };

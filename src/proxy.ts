@@ -1,19 +1,31 @@
+
 // proxy.ts
 import { withAuth } from "next-auth/middleware"
 import { NextResponse } from "next/server"
 
-// Define public routes that don't require authentication
+// Define public routes that don't require authentication.
+// These are exact, static paths only — dynamic segments (like the
+// per-user profile at /<username>) are NOT listed here; they're handled
+// by isPublicProfilePath below, since a literal "/[username]" entry can
+// never match a real pathname (Array.includes does exact string equality,
+// and req.nextUrl.pathname is the resolved path, e.g. "/johndoe").
 const PUBLIC_ROUTES = [
     "/",
-    "/api/images/**",
+    "/auth/login",
+    "/auth/register",
+    "/auth/forgot-password",
+    "/api/auth/register",
+    "/api/auth/login",
+    "/api/auth/complete-profile",
+    "/api/auth/forgot-password",
+
     "/daraja-tester",
-    "/signin",
+
     "/pricing",
     "/docs",
     "/api/mpesa/auth",
     "/api/mpesa/proxy",
     "/api/payments/direct/callback",
-    // Add any other public routes here
 ];
 
 // Define static asset patterns that should always be accessible
@@ -27,6 +39,7 @@ const STATIC_ASSETS = [
     "/_next/image",
     "/icons/",
 ];
+
 
 // Helper function to check if path matches any pattern
 const matchesPattern = (pathname: string, patterns: string[]): boolean => {
@@ -72,6 +85,7 @@ export default withAuth(
                     return true;
                 }
 
+
                 // API routes can have their own auth logic
                 // But by default, protect them
                 if (pathname.startsWith("/api/")) {
@@ -83,7 +97,7 @@ export default withAuth(
             },
         },
         pages: {
-            signIn: "/signin",
+            signIn: "/auth/login",
             // You can also define error pages
             // error: "/auth/error",
         },

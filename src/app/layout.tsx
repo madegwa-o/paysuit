@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Script from "next/script";
 
-import { Header } from "@/components/header";
+import { Header } from "@/components/global/header";
 import { AuthProvider } from "@/components/auth-provider";
 import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "@/components/theme-provider";
