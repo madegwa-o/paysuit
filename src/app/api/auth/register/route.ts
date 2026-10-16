@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { User } from "@/models";
-import { Project, ProjectMemberStatus } from "@/models/project";
 import { connectToDatabase } from "@/lib/db";
 import { registerSchema } from "@/lib/validations/user";
 import { sendVerificationEmail } from "@/lib/emails/sendVerificationEmail";
@@ -51,20 +50,7 @@ export async function POST(req: NextRequest) {
             emailVerificationToken: hashedToken,
             emailVerificationExpires: new Date(Date.now() + 1000 * 60 * 60 * 24), // 24h
         });
-        // Invitations may be created before someone has a KeeHub account.
-        // Claim matching pending invitations as soon as registration succeeds
-        // so the new collaborator can immediately open the shared project.
-        await Project.updateMany(
-            { members: { $elemMatch: { email: user.email, userId: null } } },
-            {
-                $set: {
-                    "members.$[member].userId": user._id,
-                    "members.$[member].name": user.name,
-                    "members.$[member].status": ProjectMemberStatus.ACTIVE,
-                },
-            },
-            { arrayFilters: [{ "member.email": user.email, "member.userId": null }] }
-        );
+
         console.log("[Register] ✓ User created:", { userId: user._id, email: user.email });
 
         // Send the raw (unhashed) token in the email link — never the hashed one
