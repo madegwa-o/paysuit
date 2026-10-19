@@ -1,0 +1,22 @@
+[1mdiff --git a/package.json b/package.json[m
+[1mindex ee9ad38..7741071 100644[m
+[1m--- a/package.json[m
+[1m+++ b/package.json[m
+[36m@@ -14,6 +14,9 @@[m
+     "@ducanh2912/next-pwa": "^10.2.6",[m
+     "@elevenlabs/react": "^0.8.0",[m
+     "@hookform/resolvers": "^3.10.0",[m
+[32m+[m[32m    "@mdx-js/loader": "^3.1.1",[m
+[32m+[m[32m    "@mdx-js/react": "^3.1.1",[m
+[32m+[m[32m    "@next/mdx": "^16.2.9",[m
+     "@radix-ui/react-accordion": "1.2.2",[m
+     "@radix-ui/react-alert-dialog": "^1.1.15",[m
+     "@radix-ui/react-aspect-ratio": "1.1.1",[m
+[36m@@ -84,6 +87,7 @@[m
+   "devDependencies": {[m
+     "@tailwindcss/postcss": "^4",[m
+     "@types/d3": "^7.4.3",[m
+[32m+[m[32m    "@types/mdx": "^2.0.14",[m
+     "@types/node": "^20",[m
+     "@types/nodemailer": "^8.0.2",[m
+     "@types/react": "^19",[m
