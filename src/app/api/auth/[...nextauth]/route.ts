@@ -102,9 +102,11 @@ export const authOptions: NextAuthOptions = {
                     return {
                         id: user._id.toString(),
                         email: user.email,
-                        name: user.name,
+                        firstName: user.firstName,
+                        lastName: user.lastName,
                         image: user.image,
                         username: user.username,
+                        roles: user.roles,
                         profileCompleted: user.profileCompleted ?? false,
                     };
                 } catch (error: unknown) {
@@ -124,7 +126,7 @@ export const authOptions: NextAuthOptions = {
 
     callbacks: {
         // Handle JWT token creation/update
-        async jwt({ token, user, account }) {
+        async jwt({ token, user, account, profile }) {
             if (user) {
                 token.id = user.id;
                 token.email = user.email;
@@ -134,38 +136,35 @@ export const authOptions: NextAuthOptions = {
             }
 
             if (account?.provider === "google" && user) {
-                try {
-                    await connectToDatabase();
-                    let dbUser = await User.findOne({ email: user.email });
+                await connectToDatabase();
+                const g = profile as { given_name?: string; family_name?: string } | undefined;
+                let dbUser = await User.findOne({ email: user.email });
 
-                    if (!dbUser) {
-                        const username = await generateUniqueUsername();
-                        dbUser = await User.create({
-                            googleId: user.id,
-                            email: user.email,
-                            name: user.name,
-                            image: user.image,
-                            username: username,
-                            authProvider: "google",
-                            emailVerified: true,
-                            profileCompleted: false,
-                        });
-                    } else if (!dbUser.googleId) {
-                        dbUser.googleId = user.id;
-                        dbUser.authProvider = "google";
-                        dbUser.image = user.image || dbUser.image;
-                        await dbUser.save();
-                    }
-
-                    token.id = dbUser._id.toString();
-                    token.username = dbUser.username;
-                    token.roles = dbUser.roles;
-                    token.profileCompleted = dbUser.profileCompleted;
-                } catch (error) {
-                    console.error("Google OAuth callback error:", error);
+                if (!dbUser) {
+                    dbUser = await User.create({
+                        googleId: user.id,
+                        email: user.email,
+                        username: await generateUniqueUsername(),
+                        firstName: g?.given_name ?? "",
+                        lastName: g?.family_name ?? "",
+                        imageUrl: user.image,
+                        authProvider: "google",
+                        emailVerified: true,
+                        isProfileComplete: false,
+                    });
+                } else {
+                    let changed = false;
+                    if (!dbUser.googleId) { dbUser.googleId = user.id; changed = true; }
+                    if (!dbUser.imageUrl && user.image) { dbUser.imageUrl = user.image; changed = true; }
+                    if (!dbUser.username) { dbUser.username = await generateUniqueUsername(); changed = true; }
+                    if (changed) await dbUser.save();
                 }
-            }
 
+                token.id = dbUser._id.toString();
+                token.username = dbUser.username;
+                token.roles = dbUser.roles;
+                token.profileCompleted = dbUser.isProfileComplete;
+            }
             return token;
         },
 

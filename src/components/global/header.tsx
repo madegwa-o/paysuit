@@ -42,11 +42,8 @@ export function Header() {
     //added the route
     const navLinks = [
         { label: "Home", href: "/" },
-        { label: "Daraja Tester", href: "/daraja-tester" },
-        { label: "Direct Paywall", href: "/directpaywall" },
-        { label: "Managed Paywall", href: "/managedpaywall" },
+        { label: "Transactions", href: "/transactions" },
         { label: "Pricing", href: "/pricing" },
-        { label: "Docs", href: "/docs" },
         { label: "My Account", href: "/account" },
     ]
 

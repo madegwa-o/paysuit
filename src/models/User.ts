@@ -1,6 +1,3 @@
-// ============================================
-// models/User.ts
-// ============================================
 import { Schema, model, models, Types, Document } from "mongoose";
 import bcrypt from "bcryptjs";
 
@@ -15,38 +12,43 @@ export enum AccountType {
 	FREEMIUM = "FREEMIUM",
 }
 
+export enum AuthProvider {
+	EMAIL = "email",
+	GOOGLE = "google",
+}
+
+export interface IDarajaEnv {
+	consumerKey?: string;
+	consumerSecret?: string;
+	passkey?: string;
+	initiatorName?: string;
+	shortCode?: string;
+}
+
 export interface IUser extends Document {
 	_id: Types.ObjectId;
-	name: string;
+	username: string;
+	firstName: string;
+	lastName: string;
 	email: string;
 	password?: string;
-	image?: string;
-	phone?: string;
+	imageUrl?: string;
+	phoneNumbers: string[];
 	address?: string;
+	googleId?: string;
+	authProvider: AuthProvider;
+	emailVerified: boolean;
+	isProfileComplete: boolean;
 	roles: Role[];
+	isActive: boolean;
 	accountType: AccountType;
 	walletBalance: number;
 	accountBalance: number;
-	isActive: boolean;
-	lastLogin?: Date;
-	darajaCredentials?: {
-		sandbox?: {
-			consumerKey?: string;
-			consumerSecret?: string;
-			passkey?: string;
-			initiatorName?: string;
-			shortCode?: string;
-		};
-		production?: {
-			consumerKey?: string;
-			consumerSecret?: string;
-			passkey?: string;
-			initiatorName?: string;
-			shortCode?: string;
-		};
-	};
+	lastLogin?: Date | null;
+	darajaCredentials?: { sandbox?: IDarajaEnv; production?: IDarajaEnv };
 	createdAt: Date;
 	updatedAt: Date;
+	name: string; // virtual
 
 	comparePassword(candidate: string): Promise<boolean>;
 	hasRole(role: Role): boolean;
@@ -54,14 +56,42 @@ export interface IUser extends Document {
 	removeRole(role: Role): void;
 }
 
+const phonePattern = /^\+?[0-9 ()-]{7,20}$/; // same as Go
+
+const darajaEnv = {
+	consumerKey: { type: String, default: "", select: false },
+	consumerSecret: { type: String, default: "", select: false },
+	passkey: { type: String, default: "", select: false },
+	initiatorName: { type: String, default: "", select: false },
+	shortCode: { type: String, default: "", select: false },
+};
+
 const UserSchema = new Schema<IUser>(
 	{
-		name: {
+		username: {
 			type: String,
-			required: [true, "Name is required"],
+			required: [true, "Username is required"],
+			unique: true,
+			lowercase: true, // authorize() lowercases the identifier
 			trim: true,
-			minlength: [2, "Name must be at least 2 characters"],
+			minlength: [3, "Username must be at least 3 characters"],
+			maxlength: [30, "Username cannot exceed 30 characters"],
+			match: [/^[a-z0-9_.]+$/, "Username can only contain letters, numbers, underscores, and dots"],
+		},
+		firstName: {
+			type: String,
+			trim: true,
 			maxlength: [50, "Name cannot exceed 50 characters"],
+			default: "",
+			// Google may not return a name until the profile is completed
+			required: [function (this: IUser) { return this.isProfileComplete; }, "First name is required"],
+		},
+		lastName: {
+			type: String,
+			trim: true,
+			maxlength: [50, "Name cannot exceed 50 characters"],
+			default: "",
+			required: [function (this: IUser) { return this.isProfileComplete; }, "Last name is required"],
 		},
 		email: {
 			type: String,
@@ -70,139 +100,95 @@ const UserSchema = new Schema<IUser>(
 			lowercase: true,
 			trim: true,
 			match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Invalid email address"],
-			index: true,
 		},
 		password: {
 			type: String,
 			minlength: [6, "Password must be at least 6 characters"],
 			select: false,
 		},
-		image: {
-			type: String,
-			default: null,
-		},
-		phone: {
-			type: String,
-			trim: true,
-			default: null,
-		},
-		address: {
-			type: String,
-			trim: true,
-			default: null,
-		},
-		roles: {
+		imageUrl: { type: String, trim: true },
+		phoneNumbers: {
 			type: [String],
-			enum: Object.values(Role),
-			default: [Role.USER],
-			index: true,
+			default: [],
 			validate: {
-				validator: function(v: string[]) {
-					return v.length > 0;
-				},
+				validator: (v: string[]) => v.every((p) => phonePattern.test(p)),
+				message: "Invalid phone number",
+			},
+		},
+		address: { type: String, trim: true },
+		googleId: { type: String, unique: true, sparse: true }, // absent for email-only users
+		authProvider: {
+			type: String,
+			enum: Object.values(AuthProvider),
+			default: AuthProvider.EMAIL,
+		},
+		emailVerified: { type: Boolean, default: false },
+		isProfileComplete: { type: Boolean, default: false },
+		roles: {
+			type: [{ type: String, enum: Object.values(Role) }],
+			default: [Role.USER],
+			validate: {
+				validator: (v: string[]) => v.length > 0,
 				message: "User must have at least one role",
 			},
 		},
+		isActive: { type: Boolean, default: true },
 		accountType: {
 			type: String,
 			enum: Object.values(AccountType),
 			default: AccountType.FREEMIUM,
-			index: true,
 		},
-		walletBalance: {
-			type: Number,
-			default: 0,
-			min: 0,
-		},
-		accountBalance: {
-			type: Number,
-			default: 0,
-			min: 0,
-		},
-		isActive: {
-			type: Boolean,
-			default: true,
-			index: true,
-		},
-		lastLogin: {
-			type: Date,
-			default: null,
-		},
+		walletBalance: { type: Number, default: 0, min: 0 },
+		accountBalance: { type: Number, default: 0, min: 0 },
+		lastLogin: { type: Date, default: null },
 		darajaCredentials: {
-			sandbox: {
-				consumerKey: { type: String, default: "" },
-				consumerSecret: { type: String, default: "" },
-				passkey: { type: String, default: "" },
-				initiatorName: { type: String, default: "" },
-				shortCode: { type: String, default: "" },
-			},
-			production: {
-				consumerKey: { type: String, default: "" },
-				consumerSecret: { type: String, default: "" },
-				passkey: { type: String, default: "" },
-				initiatorName: { type: String, default: "" },
-				shortCode: { type: String, default: "" },
-			},
+			sandbox: darajaEnv,
+			production: darajaEnv,
 		},
 	},
 	{
 		timestamps: true,
 		versionKey: false,
-		toJSON: {
-			virtuals: true,
-			transform: (_, ret) => {
-				delete ret.password;
-				return ret;
-			},
-		},
-		toObject: {
-			virtuals: true,
-			transform: (_, ret) => {
-				delete ret.password;
-				return ret;
-			},
-		},
+		toJSON: { virtuals: true, transform: strip },
+		toObject: { virtuals: true, transform: strip },
 	}
 );
 
+function strip(_: unknown, ret: Record<string, unknown>) {
+	delete ret.password;
+	delete ret.darajaCredentials;
+	return ret;
+}
 
-// 📇 Compound indexes for common queries
+UserSchema.virtual("name").get(function (this: IUser) {
+	return `${this.firstName} ${this.lastName}`.trim();
+});
+
 UserSchema.index({ email: 1, isActive: 1 });
 UserSchema.index({ roles: 1, accountType: 1 });
 
-// 🔒 Hash password before saving
 UserSchema.pre("save", async function (next) {
 	if (!this.isModified("password") || !this.password) return next();
-
 	try {
-		const salt = await bcrypt.genSalt(10);
-		this.password = await bcrypt.hash(this.password, salt);
+		// cost 10 matches Go's PasswordCost, and bcrypt hashes are
+		// interchangeable between bcryptjs and golang.org/x/crypto/bcrypt
+		this.password = await bcrypt.hash(this.password, 10);
 		next();
 	} catch (error) {
 		next(error as Error);
 	}
 });
 
-// 🧠 Password comparison
-UserSchema.methods.comparePassword = async function (candidate: string): Promise<boolean> {
+UserSchema.methods.comparePassword = async function (candidate: string) {
 	if (!this.password) return false;
 	return bcrypt.compare(candidate, this.password);
 };
-
-// 🧩 Role management methods
-UserSchema.methods.hasRole = function (role: Role): boolean {
-	return this.roles.includes(role);
+UserSchema.methods.hasRole = function (role: Role) { return this.roles.includes(role); };
+UserSchema.methods.addRole = function (role: Role) {
+	if (!this.roles.includes(role)) this.roles.push(role);
 };
-
-UserSchema.methods.addRole = function (role: Role): void {
-	if (!this.roles.includes(role)) {
-		this.roles.push(role);
-	}
-};
-
-UserSchema.methods.removeRole = function (role: Role): void {
+UserSchema.methods.removeRole = function (role: Role) {
 	this.roles = this.roles.filter((r: Role) => r !== role);
 };
 
-// 🚀 Export
 export const User = models.User || model<IUser>("User", UserSchema);

@@ -14,6 +14,12 @@ if (!MONGODB_URI) {
 	throw new Error("MONGODB_URI is not set in environment variables");
 }
 
+const DATABASE_NAME = process.env.DATABASE_NAME;
+if (!DATABASE_NAME) {
+	throw new Error("DATABASE_NAME is not set in environment variables");
+}
+
+
 let cached = global.mongooseConn;
 if (!cached) {
 	cached = global.mongooseConn = { conn: null, promise: null };
@@ -25,8 +31,10 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
 	}
 	if (!cached.promise) {
 		cached.promise = mongoose.connect(MONGODB_URI, {
+			dbName: DATABASE_NAME,
 			bufferCommands: false,
 		});
+
 	}
 	cached.conn = await cached.promise;
 	return cached.conn;

@@ -14,6 +14,7 @@ import AuthErrorHandlerWrapper from "@/components/auth-error-handler-wrapper";
 import { NotificationDisplay } from "@/components/notifications/notification-display";
 import ChatbotWidget from "@/components/chatbot-widget";
 import { SITE_URL } from "@/lib/site";
+import { Toaster } from "sonner";
 
 
 // -----------------
@@ -157,6 +158,7 @@ export default function RootLayout({
             <ThemeProvider defaultTheme="system" storageKey="theme-pref">
                 <Suspense fallback={null}>
                     <Header />
+                    <Toaster />
                     {children}
 
                     <Analytics />
@@ -166,7 +168,6 @@ export default function RootLayout({
                 <AuthErrorHandlerWrapper />
                 <InstallPrompt />
                 <MobileBottomNav />
-                <ChatbotWidget />
             </ThemeProvider>
         </AuthProvider>
 

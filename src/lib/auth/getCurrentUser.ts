@@ -19,8 +19,18 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     const user = session?.user;
 
 
-    if (!user?.email || !user?.id) {
-        console.log("Failed validation: Missing email or id on session.user");
+    if ( !user?.id) {
+        console.log("Failed validation: Missing id on session.user");
+        return null;
+    }
+
+    if (!user?.email ) {
+        console.log("Failed validation: Missing email on session.user");
+        return null;
+    }
+
+    if (!user?.username) {
+        console.log("Failed validation: Missing username on session.user");
         return null;
     }
 
