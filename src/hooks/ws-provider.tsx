@@ -6,6 +6,7 @@ import {
 import { useSession } from "next-auth/react";
 import { wsUrl } from "@/lib/config";
 import { fetchChatToken } from "@/lib/ws/jwtToken";
+import {Payment} from "@/lib/payments";
 
 export type ChatMessage = {
     id: string;
@@ -24,6 +25,7 @@ type Ctx = {
     send: (text: string) => boolean;
     /** For non-chat consumers (e.g. payments later). Returns an unsubscribe fn. */
     subscribe: (fn: (m: ChatMessage) => void) => () => void;
+    subscribePayments: (fn: (p: Payment) => void) => () => void;
 };
 
 const MAX_BACKOFF_MS = 15_000;
@@ -58,6 +60,7 @@ export function WsProvider({ children }: { children: React.ReactNode }) {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const wsRef = useRef<WebSocket | null>(null);
     const listeners = useRef(new Set<(m: ChatMessage) => void>());
+    const paymentListeners = useRef(new Set<(p: Payment) => void>());
 
     useEffect(() => {
         if (session === "loading") return;
@@ -103,10 +106,21 @@ export function WsProvider({ children }: { children: React.ReactNode }) {
             };
             ws.onmessage = (e) => {
                 if (typeof e.data !== "string") return;
+
+                let raw: any = null;
+                try { raw = JSON.parse(e.data); } catch { /* not JSON: treat as chat text */ }
+
+                if (raw?.type === "payment" && raw.payment) {
+                    paymentListeners.current.forEach((fn) => {
+                        try { fn(raw.payment as Payment); } catch { /* isolate subscribers */ }
+                    });
+                    return; // never shown as a chat message
+                }
+
                 const msg = parseMessage(e.data);
                 setMessages((prev) => [...prev, msg].slice(-MAX_MESSAGES));
                 listeners.current.forEach((fn) => {
-                    try { fn(msg); } catch { /* one bad subscriber must not break the rest */ }
+                    try { fn(msg); } catch { /* isolate subscribers */ }
                 });
             };
             ws.onclose = () => {
@@ -140,9 +154,14 @@ export function WsProvider({ children }: { children: React.ReactNode }) {
         return () => { listeners.current.delete(fn); };
     }, []);
 
+    const subscribePayments = useCallback((fn: (p: Payment) => void) => {
+        paymentListeners.current.add(fn);
+        return () => { paymentListeners.current.delete(fn); };
+    }, []);
+
     const value = useMemo<Ctx>(
-        () => ({ status, connected: status === "open", messages, send, subscribe }),
-        [status, messages, send, subscribe],
+        () => ({ status, connected: status === "open", messages, send, subscribe, subscribePayments}),
+        [status, messages, send, subscribe, subscribePayments],
     );
 
     return <WsContext.Provider value={value}>{children}</WsContext.Provider>;

@@ -1,3 +1,5 @@
+// /lib/config
+
 const base = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8080";
 
 // ws://host:8080  -> ws://host:8080   (for WebSocket)

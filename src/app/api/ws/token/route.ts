@@ -1,3 +1,5 @@
+//   /api/ws/token
+
 import { NextResponse } from "next/server";
 import { SignJWT } from "jose";
 import { getCurrentUser } from "@/lib/auth/getCurrentUser";
