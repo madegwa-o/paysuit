@@ -4,17 +4,16 @@ import "./globals.css";
 import Script from "next/script";
 
 import { Header } from "@/components/global/header";
-import { AuthProvider } from "@/components/auth-provider";
+import { AuthProvider } from "@/components/global/auth-provider";
 import { Analytics } from "@vercel/analytics/next";
-import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeProvider } from "@/components/global/theme-provider";
 import { Suspense } from "react";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import InstallPrompt from "@/components/InstallPrompt";
-import AuthErrorHandlerWrapper from "@/components/auth-error-handler-wrapper";
 import { NotificationDisplay } from "@/components/notifications/notification-display";
-import ChatbotWidget from "@/components/chatbot-widget";
 import { SITE_URL } from "@/lib/site";
 import { Toaster } from "sonner";
+import {WsProvider} from "@/hooks/ws-provider";
 
 
 // -----------------
@@ -155,20 +154,21 @@ export default function RootLayout({
         <html lang="en">
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <AuthProvider>
-            <ThemeProvider defaultTheme="system" storageKey="theme-pref">
-                <Suspense fallback={null}>
-                    <Header />
-                    <Toaster />
-                    {children}
+            <WsProvider>
+                <ThemeProvider defaultTheme="system" storageKey="theme-pref">
+                    <Suspense fallback={null}>
+                        <Header />
+                        <Toaster />
+                        {children}
 
-                    <Analytics />
-                </Suspense>
+                        <Analytics />
+                    </Suspense>
 
-                <NotificationDisplay />
-                <AuthErrorHandlerWrapper />
-                <InstallPrompt />
-                <MobileBottomNav />
-            </ThemeProvider>
+                    <NotificationDisplay />
+                    <InstallPrompt />
+                    <MobileBottomNav />
+                </ThemeProvider>
+            </WsProvider>
         </AuthProvider>
 
         {/* SEO Structured Data */}

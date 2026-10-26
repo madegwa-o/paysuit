@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import { Menu, X, Moon, Sun, User, LogIn, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useTheme } from "@/components/theme-provider"
+import { useTheme } from "@/components/global/theme-provider"
 import { useSession, signOut } from "next-auth/react"
 import {
     DropdownMenu,
