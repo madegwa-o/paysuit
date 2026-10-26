@@ -1,4 +1,4 @@
-const base = process.env.NEXT_BACKEND_URL ?? "http://localhost:8080";
+const base = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8080";
 
 // ws://host:8080  -> ws://host:8080   (for WebSocket)
 // ws://host:8080  -> http://host:8080 (for fetch)
