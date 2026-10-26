@@ -248,7 +248,7 @@ export default function PromptPanel({ initialAccounts }: { initialAccounts: Bank
                             <input
                                 className="w-full rounded-md border bg-background p-2"
                                 placeholder="Account number"
-                                maxLength={12}
+                                maxLength={13}
                                 value={newAccount}
                                 onChange={(e) => setNewAccount(e.target.value)}
                             />
