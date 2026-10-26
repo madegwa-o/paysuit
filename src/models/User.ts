@@ -1,5 +1,6 @@
 import { Schema, model, models, Types, Document } from "mongoose";
 import bcrypt from "bcryptjs";
+import {BankAccountSchema, IBankAccount} from "@/models/bankAccounts";
 
 export enum Role {
 	ADMIN = "ADMIN",
@@ -48,7 +49,7 @@ export interface IUser extends Document {
 	darajaCredentials?: { sandbox?: IDarajaEnv; production?: IDarajaEnv };
 	createdAt: Date;
 	updatedAt: Date;
-	name: string; // virtual
+	bankAccounts: IBankAccount[];
 
 	comparePassword(candidate: string): Promise<boolean>;
 	hasRole(role: Role): boolean;
@@ -115,6 +116,7 @@ const UserSchema = new Schema<IUser>(
 				message: "Invalid phone number",
 			},
 		},
+		bankAccounts: { type: [BankAccountSchema], default: [] },
 		address: { type: String, trim: true },
 		googleId: { type: String, unique: true, sparse: true }, // absent for email-only users
 		authProvider: {

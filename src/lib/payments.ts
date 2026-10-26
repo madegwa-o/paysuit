@@ -1,5 +1,7 @@
 import { backendFetch } from "@/lib/backendFetch";
 
+import { Recipient } from "@/lib/bankAccounts";
+
 export type Provider = "MALIPO" | "PAYSUIT";
 export type PaymentStatus = "PENDING" | "SUCCESS" | "FAILED" | "CANCELLED";
 
@@ -40,7 +42,17 @@ export async function setProvider(paymentProvider: Provider) {
     });
 }
 
+
+
+export const sendPrompt = (
+    body: {
+        phoneNumber: string;
+        amount: number;
+        description?: string;
+    } & Partial<Recipient>, // optional paybill + accountNumber
+) => backendFetch<Payment>("/payments/stk-push", { method: "POST", body });
+
+
 export const listPayments = () => backendFetch<Payment[]>("/payments/");
 export const getPayment = (id: string) => backendFetch<Payment>(`/payments/${id}`);
-export const sendPrompt = (body: { phoneNumber: string; amount: number; description?: string }) =>
-    backendFetch<Payment>("/payments/stk-push", { method: "POST", body });
+
