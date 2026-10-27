@@ -11,6 +11,7 @@ import { NextResponse } from "next/server"
 // and req.nextUrl.pathname is the resolved path, e.g. "/johndoe").
 const PUBLIC_ROUTES = [
     "/",
+    "/privacy",
     "/auth/login",
     "/auth/register",
     "/auth/forgot-password",
