@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useRouter } from "next/navigation"
 import { usePushNotifications } from "@/hooks/use-push-notifications"
 import ApiKeysManager from "@/components/api-keys-manager"
+import { DangerZone } from "@/components/danger-zone"
 
 export default function AccountPage() {
   const { data: session, status } = useSession()
@@ -37,7 +38,6 @@ export default function AccountPage() {
   const [profileError, setProfileError] = useState<string | null>(null)
   const [savingProfile, setSavingProfile] = useState(false)
   const [shareMessage, setShareMessage] = useState<string | null>(null)
-  const [dangerLoading, setDangerLoading] = useState<"history" | "account" | null>(null)
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -179,27 +179,6 @@ export default function AccountPage() {
     }
   }
 
-  const handleDeleteHistory = async () => {
-    setDangerLoading("history")
-    try {
-      await fetch("/api/user/transactions", { method: "DELETE" })
-    } finally {
-      setDangerLoading(null)
-    }
-  }
-
-  const handleDeleteAccount = async () => {
-    setDangerLoading("account")
-    try {
-      const response = await fetch("/api/user/account", { method: "DELETE" })
-      if (response.ok) {
-        await signOut({ callbackUrl: "/" })
-      }
-    } finally {
-      setDangerLoading(null)
-    }
-  }
-
   return (
     <main className="container px-4 py-8 max-w-5xl mx-auto">
       <div className="mb-8">
@@ -330,32 +309,7 @@ export default function AccountPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-destructive/50">
-            <CardHeader>
-              <CardTitle className="text-destructive">Danger Zone</CardTitle>
-              <CardDescription>Irreversible actions for your account.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-sm">Delete All Transaction History</p>
-                  <p className="text-muted-foreground text-xs">This action cannot be undone</p>
-                </div>
-                <Button variant="destructive" size="sm" onClick={handleDeleteHistory} disabled={dangerLoading !== null}>
-                  {dangerLoading === "history" ? "Deleting..." : "Delete History"}
-                </Button>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-sm">Delete Account</p>
-                  <p className="text-muted-foreground text-xs">Permanently delete your account and all data</p>
-                </div>
-                <Button variant="destructive" size="sm" onClick={handleDeleteAccount} disabled={dangerLoading !== null}>
-                  {dangerLoading === "account" ? "Deleting..." : "Delete Account"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <DangerZone />
         </TabsContent>
       </Tabs>
     </main>

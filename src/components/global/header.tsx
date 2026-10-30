@@ -42,8 +42,9 @@ export function Header() {
     //added the route
     const navLinks = [
         { label: "Home", href: "/" },
-        { label: "Transactions", href: "/transactions" },
-        { label: "Pricing", href: "/pricing" },
+        { label: "Prompt", href: "/prompt" },
+        { label: "Terms", href: "/terms" },
+        { label: "Privacy", href: "/Privacy" },
         { label: "My Account", href: "/account" },
     ]
 

@@ -12,6 +12,7 @@ import { NextResponse } from "next/server"
 const PUBLIC_ROUTES = [
     "/",
     "/privacy",
+    "/terms",
     "/auth/login",
     "/auth/register",
     "/auth/forgot-password",
