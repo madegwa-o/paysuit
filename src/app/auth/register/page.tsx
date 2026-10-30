@@ -26,11 +26,65 @@ const registerSchema = z
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
+function TermsCheckbox({
+                         checked,
+                         onChange,
+                         disabled,
+                         showError,
+                       }: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
+  showError?: boolean;
+}) {
+  return (
+      <div className="space-y-1">
+        <label className="flex items-start gap-2 text-sm text-muted-foreground cursor-pointer">
+          <input
+              type="checkbox"
+              checked={checked}
+              disabled={disabled}
+              onChange={(e) => onChange(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
+          />
+          <span>
+          I agree to the{' '}
+            <Link
+                href="/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+            >
+            Terms &amp; Conditions
+          </Link>{' '}
+            and{' '}
+            <Link
+                href="/policy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+            >
+            Privacy Policy
+          </Link>
+          .
+        </span>
+        </label>
+        {showError && !checked && (
+            <p className="text-xs text-destructive">
+              You must accept the Terms and Privacy Policy to continue.
+            </p>
+        )}
+      </div>
+  );
+}
+
 export default function RegisterPage() {
   const [step, setStep] = useState<'initial' | 'form' | 'verification'>('initial');
   const [isLoading, setIsLoading] = useState(false);
   const [serverError, setServerError] = useState('');
   const [registeredEmail, setRegisteredEmail] = useState('');
+  const [accepted, setAccepted] = useState(false);
+  const [showTermsError, setShowTermsError] = useState(false);
 
   const {
     register,
@@ -42,7 +96,12 @@ export default function RegisterPage() {
   });
 
   const onSubmit = async (values: RegisterFormValues) => {
+    if (!accepted) {
+      setShowTermsError(true);
+      return;
+    }
     setServerError('');
+    // ...rest unchanged
     setIsLoading(true);
 
     try {
@@ -78,6 +137,10 @@ export default function RegisterPage() {
   };
 
   const handleGoogleRegister = async () => {
+    if (!accepted) {
+      setShowTermsError(true);
+      return;
+    }
     try {
       await signIn('google', { callbackUrl: '/auth/complete-profile' });
     } catch (err: unknown) {
@@ -86,7 +149,6 @@ export default function RegisterPage() {
       });
     }
   };
-
   return (
       <div className="min-h-screen bg-transparent flex items-center justify-center p-4 relative">
         {/* Ambient accent glow — kept even on a transparent page background */}
@@ -110,6 +172,12 @@ export default function RegisterPage() {
 
             {step === 'initial' && (
                 <div className="space-y-3">
+                  <TermsCheckbox
+                      checked={accepted}
+                      onChange={(v) => { setAccepted(v); if (v) setShowTermsError(false); }}
+                      showError={showTermsError}
+                  />
+
                   <button
                       onClick={handleGoogleRegister}
                       className="w-full rounded-full bg-white/5 hover:bg-white/10 h-10 transition-colors flex items-center justify-center gap-2 border border-white/10 backdrop-blur-sm"
@@ -133,7 +201,10 @@ export default function RegisterPage() {
                   </div>
 
                   <Button
-                      onClick={() => setStep('form')}
+                      onClick={() => {
+                        if (!accepted) { setShowTermsError(true); return; }
+                        setStep('form');
+                      }}
                       className="w-full rounded-full h-10 font-semibold"
                   >
                     Email Registration
@@ -199,6 +270,13 @@ export default function RegisterPage() {
                         <p className="text-xs text-destructive">{errors.confirmPassword.message}</p>
                     )}
                   </div>
+
+                  <TermsCheckbox
+                      checked={accepted}
+                      onChange={(v) => { setAccepted(v); if (v) setShowTermsError(false); }}
+                      disabled={isLoading}
+                      showError={showTermsError}
+                  />
 
                   <div className="flex gap-2">
                     <Button
